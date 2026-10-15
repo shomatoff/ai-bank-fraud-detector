@@ -1,6 +1,6 @@
-# SentinelAI — yakuniy lokal ish hisoboti (v4)
+# SentinelAI — yakuniy to‘liq ish hisoboti (v4)
 
-Sana: 2026-10-15. Holat: ishlaydigan, faqat sintetik ma’lumotli FastAPI + HTML/JavaScript portfolio ilovasi. Haqiqiy bank, mijoz, credential, to‘lov API yoki karta bloklash ishlatilmagan. Master prompt fayli workspace/Desktop qidiruvida topilmadi; shu sabab uning 100% bajarilgani da’vo qilinmaydi. Public [GitHub repository](https://github.com/shomatoff/ai-bank-fraud-detector) yaratildi; push, CI va release holati yakuniy tekshiruvdan keyin belgilanadi. LinkedIn/Telegram matnlari draft, post qilinmagan.
+Sana: 2026-10-15. Holat: ishlaydigan, faqat sintetik ma’lumotli FastAPI + HTML/JavaScript portfolio ilovasi. Haqiqiy bank, mijoz, credential, to‘lov API yoki karta bloklash ishlatilmagan. Master prompt fayli workspace/Desktop qidiruvida topilmadi; shu sabab uning 100% bajarilgani da’vo qilinmaydi. Kod ochiq [GitHub repository](https://github.com/shomatoff/ai-bank-fraud-detector) `main` branchiga yuborilgan. [GitHub Actions CI](https://github.com/shomatoff/ai-bank-fraud-detector/actions) tekshirilgan; [v2.0.0 release](https://github.com/shomatoff/ai-bank-fraud-detector/releases/tag/v2.0.0) source ZIP/tarball orqali yuklab olinadi. LinkedIn/Telegram matnlari draft, post qilinmagan.
 
 ## Nimalar qo‘shildi va yangilandi
 
@@ -21,12 +21,12 @@ V3 old test: precision .1009, recall .3548, PR-AUC .1134, ROC .7714. V4 bilan ta
 
 ## Test va tekshiruvlar
 
-- `pytest -q`: **16 passed** (joriy auditdan keyin).
+- `pytest -q`: **16 passed** (joriy auditdan keyin). `-W error::DeprecationWarning` rejimida ham **16 passed**.
 - `ruff check fraud_detector tests scripts`: **All checks passed**.
 - `.venv/bin/pip-audit -r requirements.txt`: runtime requirementlarda **No known vulnerabilities found**. Dastlab butun `.venv` auditi eski `pip 24.0` uchun 12 advisory qaytardi; `pip 26.2.1` ga ko‘tarilgach `.venv/bin/pip-audit` **No known vulnerabilities found** qaytardi. Bu vaqtga bog‘liq skan natijasi, xavfsizlik sertifikati emas.
 - Live API on 127.0.0.1:8002: health/config/metrics/overview/transactions/docs 200; score 200; threshold preview 200; valid batch 200; malformed batch 422; CSRF 403; report create 201; review/audit/JSON/HTML/PDF/CSV exports 200.
 - Real Chrome/CDP capture: **8 ta** haqiqiy screenshot; overview, scoring, model izohi, status va note-only audit, curves, PSI/slices, uch til DOM tekshiruvlaridan o‘tdi. Fayllar: [screenshots](screenshots/README.md).
-- Model artifact/API consistency va hash rejection testlari o‘tdi. `TestClient/httpx` deprecation rejimi ham xatosiz o‘tdi (`httpx 0.28.1`, Starlette 1.8.0). Docker runtime va GitHub-hosted CI hali bajarilmadi.
+- Model artifact/API consistency va hash rejection testlari o‘tdi. `TestClient/httpx` deprecation rejimi ham xatosiz o‘tdi (`httpx 0.28.1`, Starlette 1.8.0). Barcha 20 Markdown hujjatidagi lokal havolalar tekshirildi: **0 ta singan havola**. `node --check web/app.js` o‘tdi. Public GitHub-hosted [CI run](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/38786055291) **success**: Ruff, pytest, pip-audit, model training va metrics assertion o‘tdi. Yakuniy commit CI holati Actions sahifasida ko‘rinadi. Docker runtime bajarilmadi.
 
 ## Ishlatilgan texnologiyalar va xatolar
 
@@ -45,6 +45,13 @@ Joriy auditdagi qo‘shimcha topilmalar va yechimlar:
 | Eski pip versiyasida advisorylar bor edi | `.venv` pip 24.0 → 26.2.1; installed-environment audit qayta bajarildi va 0 known vulnerability chiqdi. |
 | Demo hujjatida server 8000, curl esa 8001 edi | Barcha demo HTTP komandalar 8000 ga moslandi. |
 | Patch utilitasi `.orig/.rej` qoldirgan edi | Faqat shu ishga tegishli patch qoldiqlari olib tashlandi; foydalanuvchi ma’lumoti o‘chirilmadi. |
+
+### Fayllar bo‘yicha aniq o‘zgarishlar
+
+- Yangi hujjatlar: `docs/LOCAL_INTEGRATION.md`, `docs/FRAUD_DETECTION_CAPABILITIES.md`, `docs/MODEL_EVALUATION.md`, `docs/BANKING_INTEGRATION_ROADMAP.md`, uch tildagi sintetik yorliq formulasi va qo‘llanmalar, model/data cards, ushbu hisobot, release/social post draftlari. `constraints-verified.txt`, `Dockerfile`, `Makefile`, CI workflow va haqiqiy screenshotlar qo‘shildi.
+- Yangilangan kod: `fraud_detector/synthetic.py` (ssenariy va tarix), `fraud_detector/model.py` (vaqt bo‘yicha baholash, baseline, calibration, explanation, drift), `fraud_detector/api.py` (scoring, strict batch, analyst workflow, eksport, xavfsiz validatsiya), `fraud_detector/reporting.py` (HTML/PDF/CSV), `web/index.html`, `web/app.js`, `web/styles.css` (uch til va diagnostika), `tests/` va `scripts/`. Aniq interfeys va metrikalar yuqorida hamda bog‘langan docs’da.
+- Olib tashlanganlar: patchdan qolgan `.github/workflows/ci.yml.orig`, `fraud_detector/evaluation.py.orig`, `web/app.js.orig`, `web/index.html.orig`, `.gitignore.orig`, `requirements-dev.txt.orig`, `requirements.txt.orig`, `tests/test_app.py.orig`, `tests/test_app.py.rej`, `tests/test_foundations.py.orig`, `tests/test_foundations.py.rej`. Bular ish jarayonida hosil bo‘lgan vaqtinchalik nusxalar edi; real data yoki foydalanuvchi hujjati o‘chirilmagan. `.gitignore` kelajakdagi `.orig/.rej`, cache, `.venv`, model artifact va SQLite fayllarini Git’dan chetlatadi.
+- Aylanib o‘tilmagan cheklovlar: Docker runtime bu muhitda tekshirilmagan; haqiqiy bank bilan test, security pentest, production deployment va master prompt bo‘yicha gap analysis amalga oshirilmagan. Ularni “bajarildi” deb belgilamaymiz.
 
 ## Hali NOT IMPLEMENTED / risklar
 
@@ -66,3 +73,5 @@ python3 -m venv .venv
 ```
 
 Brauzerda server ishlayotgan paytda `http://127.0.0.1:8000/` ni oching; port band bo‘lsa 8001 ni ikkala joyda ham almashtiring. Docker local lab komandasi README’da. To‘liq capability/formula/roadmap: [audit](docs/FRAUD_DETECTION_CAPABILITIES.md), [formula UZ](docs/SYNTHETIC_FRAUD_LABEL_FORMULA_UZ.md), [roadmap](docs/BANKING_INTEGRATION_ROADMAP.md), [demo](docs/DEMO_WALKTHROUGH.md).
+
+GitHub’dan mustaqil yuklash uchun yuqoridagi `cd` qatoridan oldin `git clone https://github.com/shomatoff/ai-bank-fraud-detector.git` va `cd ai-bank-fraud-detector` ishlating; ya’ni mashinangizda loyiha mavjud bo‘lmasa `/home/chainjas/...` yo‘li sizda bo‘lmaydi. `git clone` o‘rniga GitHub release source ZIP ham ishlaydi. Lokal integratsiya HTTP API misollari [LOCAL_INTEGRATION](docs/LOCAL_INTEGRATION.md)da.

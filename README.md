@@ -38,7 +38,7 @@ Dockerfile is included for a **local lab only**. If Docker is installed: `docker
 | Model/validation artifact SHA256 integrity checks | TESTED | Integrity only, not authenticity/signature |
 | Linux venv install, pytest, Ruff and live API/browser checks | TESTED | Exact results in [report](IMPLEMENTATION_REPORT_UZ.md) |
 | Dockerfile and Makefile | IMPLEMENTED | Docker runtime not verified unless report says otherwise |
-| GitHub Actions workflow | IMPLEMENTED | Local source; no GitHub run verified |
+| GitHub Actions workflow | TESTED | Public GitHub `main` push run passed; final run link in [report](IMPLEMENTATION_REPORT_UZ.md) |
 | pip-audit dependency scan | TESTED | Installed local environment: no known advisories after pip upgrade; time-bound finding |
 | Real bank integration, customer data, live payments | NOT IMPLEMENTED | Deliberately excluded |
 | Automatic card/transaction blocking | NOT IMPLEMENTED | Human review suggestion only |
@@ -57,4 +57,4 @@ For download, Linux setup and a copyable scoring request, use the [local integra
 
 Follow the [reproducible walkthrough](docs/DEMO_WALKTHROUGH.md) to generate synthetic data, train, launch, score, investigate and export. API documentation: `http://127.0.0.1:8000/docs`; main routes: `GET /api/health`, `/api/metrics`, `/api/overview`, `/api/transactions`, `/api/reports`, `/api/reports/{id}`, `/api/reports/{id}/audit`, exports (`.csv`, `.html`, `.pdf`, JSON); `POST /api/score`, `/api/score/batch`, `/api/threshold/preview`, `/api/reports`; `PATCH /api/reports/{id}`. Writes require local CSRF token from `/api/config` and local Host/Origin. The CSV batch endpoint accepts exact feature headers, ≤1000 rows and ≤1 MB. Do not submit real data.
 
-Real browser captures: [screenshots](screenshots/README.md). Detailed audit: [capabilities](docs/FRAUD_DETECTION_CAPABILITIES.md), [evaluation](docs/MODEL_EVALUATION.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md), [integration roadmap](docs/BANKING_INTEGRATION_ROADMAP.md), [Uzbek implementation report](IMPLEMENTATION_REPORT_UZ.md). Draft [release notes](release/RELEASE_NOTES.md), [LinkedIn](release/LINKEDIN_POST_EN.md) and [Telegram](release/TELEGRAM_ZERODAYUZ_UZ.md) are local files only; publication is separate. MIT license; educational/portfolio use.
+Real browser captures: [screenshots](screenshots/README.md). Detailed audit: [capabilities](docs/FRAUD_DETECTION_CAPABILITIES.md), [evaluation](docs/MODEL_EVALUATION.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md), [integration roadmap](docs/BANKING_INTEGRATION_ROADMAP.md), [Uzbek implementation report](IMPLEMENTATION_REPORT_UZ.md). [Release notes](release/RELEASE_NOTES.md), [LinkedIn draft](release/LINKEDIN_POST_EN.md) and [Telegram draft](release/TELEGRAM_ZERODAYUZ_UZ.md) are included; social posts have not been published. MIT license; educational/portfolio use.
