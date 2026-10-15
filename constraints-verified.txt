@@ -1,0 +1,17 @@
+# Main versions used for the executed 2026-10-15 synthetic evaluation on Python 3.12.
+# Install with: python -m pip install -c constraints-verified.txt -r requirements-dev.txt
+fastapi==0.143.1
+uvicorn==0.54.0
+numpy==2.5.4
+pandas==2.3.3
+scikit-learn==1.9.1
+joblib==1.6.0
+reportlab==4.5.1
+pydantic==2.14.1
+scipy==1.18.1
+starlette==1.8.0
+pytest==9.1.1
+httpx==0.28.1
+ruff==0.17.0
+pip-audit==2.10.1
+pip==26.2.1

@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+data/*
+!data/.gitkeep
+screenshots
+tests
+docs
+release
+*.orig
+*.rej

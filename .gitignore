@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.orig
+*.rej
+*.pyc
+.env
+data/*.csv
+data/*.joblib
+data/*.npz
+data/*.json
+data/*.sqlite3
+data/*.sqlite3-*
+!data/.gitkeep
