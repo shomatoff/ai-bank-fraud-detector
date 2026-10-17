@@ -45,4 +45,6 @@ def test_rejected_challenger_is_not_deployed_without_new_gate():
         "card_testing": {"baseline_recall": .01, "challenger_recall": .01},
     })
     assert decision["promote"] is False
-    assert decision["failed_typologies"] == ["account_takeover"]
+    assert decision["regression_failures"] == ["account_takeover"]
+    assert decision["minimum_recall_failures"] == ["account_takeover", "card_testing"]
+    assert decision["failed_typologies"] == ["account_takeover", "card_testing"]

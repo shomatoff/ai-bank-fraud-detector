@@ -138,3 +138,7 @@ Brauzerda **server ishlayotgan paytda** `http://127.0.0.1:8000/` ochiladi. Hisob
 ## 2026-10-18 qo‘shimcha — AI treningi va privacy
 
 Avvalgi matn tarixiy holda saqlandi. [Tajriba va promotion-gate dalillari](docs/AI_CHALLENGER_EVALUATION_UZ.md) hamda [manbali trening rejasi](docs/AI_TRAINING_ROADMAP_UZ.md)ga ko‘ra, yangi interaction nomzodi 10-seed odatiy sintetik testda exact-5% precision 0,8360 → 0,8653 va recall 0,6703 → 0,6938 berdi, ammo mustaqil held-out typology sinovida uch turda jiddiy yomonlashdi. Shu sabab faol v6 model almashtirilmadi; `promote=false` test bilan himoyalandi. Rasmiy ULB CSV 404 sabab olinmadi, real bank benchmarki yoki bank darajasi da’vosi yo‘q. 29 test o‘tdi, Ruff clean. GitHub repo `PRIVATE`ga o‘tkazilib `isPrivate=true` bilan tasdiqlandi; eski ommaviy nusxalar uchun bu kafolat emas. Git push/CI holati keyingi qo‘shimchada yoziladi.
+
+### 2026-10-18 Git/CI qo‘shimchasi
+
+Private `main`ga `d1136ff` push qilindi; [Actions run 39065413758](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39065413758) test/Ruff/audit/trening/smoke va Docker build/health bilan yashil. Keyingi gate qat’iylashtirilib har yangi fraud turida sintetik recall kamida 0,20 talab qilindi: qayta 342-seed sinovda to‘rtala tur minimumdan o‘tmadi, `promote=false`. Faol model o‘zgarmadi. Ikkinchi kod/doc push uchun CI alohida ko‘riladi; hech qanday GitHub Release yoki ijtimoiy post e’lon qilinmadi.

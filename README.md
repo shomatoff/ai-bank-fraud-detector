@@ -42,8 +42,8 @@ Dockerfile is included for a **local lab only**. If Docker is installed: `docker
 | JSON/HTML/PDF report and report-list CSV export | TESTED | Keyed local responses; no private data should be entered |
 | Model/validation artifact SHA256 + local HMAC | TESTED | Key outside `data/`, owner-only; not bank-grade, joblib still unsafe if untrusted |
 | Linux venv install, pytest, Ruff and live API/browser checks | TESTED | Exact results in [report](IMPLEMENTATION_REPORT_UZ.md) |
-| Dockerfile and Makefile | PARTIAL | `docker build` attempted: command not found (exit 127); build/run unverified |
-| v6 GitHub Actions workflow | IMPLEMENTED | Full tests/Ruff/audit, reduced 3-seed smoke and Docker job added; **not yet run on GitHub** |
+| Dockerfile and Makefile | PARTIAL | Local Docker unavailable; private [CI Docker build/start/health succeeded](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39065413758) |
+| v6 GitHub Actions workflow | TESTED | Private [CI run 39065413758](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39065413758): tests/Ruff/audit, reduced 3-seed smoke and Docker job succeeded |
 | pip-audit dependency scan | TESTED | Installed local environment: no known advisories after pip upgrade; time-bound finding |
 | Public ULB loader, model comparison, SHAP and feedback demo | PARTIAL | Synthetic ULB-schema fixture tested; real ULB CSV not obtained/run |
 | Ten-seed synthetic audit and unseen-typology test | TESTED | New seed-level intervals; held-out card testing recall .0127 |

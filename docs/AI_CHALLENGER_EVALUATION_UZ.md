@@ -45,3 +45,9 @@ Haqiqiy bank darajasini faqat ruxsatli real data, delayed/unknown label siyosati
 ```
 
 Joriy ishda pytest **29 passed, 1 tashqi SHAP warning**, Ruff **clean**. `tests/test_interaction_challenger.py` nomzodning yorliq/scenario/metadataga qaramasligini, score chegarasini, faol ro‘yxatdan tashqarida qolishini va regressiya gate’i rad etishini tekshiradi. `data/`dagi model, natija JSON, API-key, SQLite va CSV Git’da ignore qilinadi; ulardan hech biri GitHub’ga yuborilmaydi.
+
+## Qo‘shimcha xavfsizlik sharti va GitHub tasdig‘i
+
+Promotion gate dastlab baseline’dan 0,05 absolutdan ortiq recall pasayishini rad etardi. **Qo‘shimcha qat’iy shart** sifatida endi har ko‘rilmagan turda kamida 0,20 recall talab etiladi; bu baseline ham challenger ham 0 bo‘lgan `card_testing`ni xato “o‘tdi” deb belgilamaslik uchun kiritildi. Qayta bajarilgan 342-seed gate: `promote=false`; regression failures — `account_takeover`, `mule_cashout`, `new_account_transfer`; minimum-recall failures — **to‘rtala tur**. 0,20 sintetik safety-screen mezoni, bankning operatsion qabul chegarasi emas.
+
+`d1136ff` commit private `main`ga push qilindi. [GitHub Actions CI run](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39065413758) `verify` va Docker build/health joblarida **success** bo‘ldi. Bu run keyingi 0,20 shartli kichik commitdan **oldingi** holatni tekshirgan; yangi commit uchun alohida run tasdiqlanadi. Repo visibility `PRIVATE`/`isPrivate=true` qayta tekshirildi.

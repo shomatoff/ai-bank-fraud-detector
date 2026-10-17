@@ -19,15 +19,23 @@ FRAUD_TYPES = (
     "account_takeover", "card_testing", "mule_cashout", "new_account_transfer"
 )
 MAX_RECALL_DROP = 0.05
+MIN_HELDOUT_RECALL = 0.20
 
 
-def promotion_decision(rows: dict[str, dict], tolerance: float = MAX_RECALL_DROP) -> dict:
-    failures = [name for name, values in rows.items()
-                if values["challenger_recall"] < values["baseline_recall"] - tolerance]
+def promotion_decision(rows: dict[str, dict], tolerance: float = MAX_RECALL_DROP,
+                       minimum_recall: float = MIN_HELDOUT_RECALL) -> dict:
+    regression_failures = [name for name, values in rows.items()
+                           if values["challenger_recall"] < values["baseline_recall"] - tolerance]
+    coverage_failures = [name for name, values in rows.items()
+                         if values["challenger_recall"] < minimum_recall]
+    failures = list(dict.fromkeys([*regression_failures, *coverage_failures]))
     return {
         "promote": not failures,
         "failed_typologies": failures,
+        "regression_failures": regression_failures,
+        "minimum_recall_failures": coverage_failures,
         "maximum_allowed_absolute_recall_drop": tolerance,
+        "minimum_required_heldout_recall": minimum_recall,
         "meaning": "Synthetic holdout safety screen only; passing is not bank validation.",
     }
 
