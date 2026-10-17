@@ -46,3 +46,7 @@ Tashqi CSV fayllari, maxfiy kalitlar va yangi o‘qitilgan modellarning o‘zi G
 ## 2026-10-18 qo‘shimcha natija
 
 Bosqich 4 doirasida alohida interaction nomzodi sinovdan o‘tdi: umumiy sintetik 5% top-k metrikasi yaxshilandi, lekin yangi tur holdout promotion gate uchta jiddiy regressiya topdi. Nomzod faol modelga chiqarilmadi. Barcha raqam, protokol va xatolar [AI_CHALLENGER_EVALUATION_UZ](AI_CHALLENGER_EVALUATION_UZ.md)da. Bosqich 2 (asl ULB CSV) hamon ochiq: rasmiy download 404 qaytardi. Repo private qilindi, biroq real bankga tayyorlik bu bilan isbotlanmaydi.
+
+## 2026-10-18 keyingi holat tuzatishi — tarixiy rejani almashtirmaydi
+
+Yuqoridagi “ULB CSV yo‘q / benchmark bajarilmagan” gaplari **oldingi holat**. Keyin rasmiy Kaggle ULB v3 `creditcard.csv` `kagglehub` orqali olinib, checksum bilan xronologik benchmark **bajarildi**; validation tanlagan logistic test PR-AUC `.696457`, batafsil [BENCHMARK](BENCHMARK.md) oxirida. Bu tashqi tarixiy benchmark joriy sintetik v6 modelga qo‘shilmadi. Shunday qilib, jadvaldagi 2–3-bosqichlarning **ULB qismi bajarildi**, PaySim/IEEE-CIS, real bank dataset va bank shadow sinovi esa bajarilmadi. Yangi 842-seed customer-disjoint/vaqtli sintetik diagnostika ham [GENERALIZATION_AND_READINESS_UZ](GENERALIZATION_AND_READINESS_UZ.md)da; yangi mijoz 1 188 qator/55 fraud, ammo shu generator qoidalari va darhol ma'lum yorliqlar sabab real umumlashish isboti emas. Faol modelni almashtirish qarori yo‘q.
