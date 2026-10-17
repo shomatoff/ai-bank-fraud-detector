@@ -6,6 +6,8 @@
 
 **Synthetic-only local fraud monitoring lab.** FastAPI serves an HTML/CSS/JavaScript dashboard in English, O‘zbek and Русский. No bank data, live payment API, automatic blocking or production-readiness claim. [O‘zbek qo‘llanma](docs/README_UZ.md) · [Русское руководство](docs/README_RU.md).
 
+The dashboard has eight views: Overview, Transactions, Risk analyzer, Reports, Model insights, Review queue, Operations and Capabilities. The new queue shows a bounded model-ranked synthetic sample, Operations shows fixed-sample alerts and historical drift diagnostics, and Capabilities separates working local tools from research-only and unavailable functions. Feedback counts require the local admin key; the new view clears that key after use and does not store it. None of these views are live bank telemetry. For a running local server, `APP_PORT=8000 node scripts/dashboard_smoke.mjs` checks the dashboard in Chrome, including mobile layout and three languages.
+
 ## Linux download and launch
 
 Python 3.12 is the verified version. Download the source ZIP from [GitHub](https://github.com/shomatoff/ai-bank-fraud-detector) or clone it, then run the following in the project directory:

@@ -92,7 +92,7 @@ function render() {
   const query = el('search').value.toLowerCase(), filter = el('filter').value;
   const visible = transactions.filter(row => (row.id.toLowerCase().includes(query) || t(row.merchant_category).toLowerCase().includes(query)) && (filter === 'all' || (filter === 'fraud') === Boolean(row.is_fraud)));
   el('transactions-body').innerHTML = visible.length ? visible.map(row => rowHtml(row,true)).join('') : `<tr><td colspan="7">${t('empty')}</td></tr>`;
-  el('reports-body').innerHTML = reports.length ? reports.map(row => `<tr><td>#${row.id}</td><td>${escapeHtml(new Date(row.created_at).toLocaleString(language))}</td><td>${(row.probability*100).toFixed(1)}%</td><td><span class="risk-level ${row.level}">${t(row.level)}</span></td><td>${escapeHtml(row.note)}</td><td><a class="report-link" href="/api/reports/${row.id}/export">${t('export')}</a></td></tr>`).join('') : `<tr><td colspan="6">${t('empty')}</td></tr>`;
+  el('reports-body').innerHTML = reports.length ? reports.map(row => `<tr><td>#${row.id}</td><td>${escapeHtml(new Date(row.created_at).toLocaleString(language))}</td><td>${(row.probability*100).toFixed(1)}%</td><td><span class="risk-level ${row.level}">${t(row.level)}</span></td><td>${escapeHtml(t(row.status))}</td><td>${escapeHtml(row.note)}</td><td><a class="report-link" href="/api/reports/${row.id}/export">${t('export')}</a></td></tr>`).join('') : `<tr><td colspan="7">${t('empty')}</td></tr>`;
   if (metrics) {
     document.querySelector('[data-i18n="modelName"]').textContent = t(metrics.selected_model.startsWith('logistic') ? 'logisticName' : 'modelName');
     document.querySelector('[data-i18n="atThreshold"]').textContent = `${t('atThreshold')}: ${metrics.threshold.toFixed(4)} · ${Math.round(metrics.review_budget*100)}%`;
@@ -101,7 +101,7 @@ function render() {
     el('confusion').innerHTML = ['tn','fp','fn','tp'].map(key => `<div class="confusion-cell"><strong>${format(metrics.confusion_matrix[key])}</strong><span>${t(key)}</span></div>`).join('');
   }
 }
-async function loadReports() { try {reports = await api('/api/reports',{headers:{'X-API-Key':window.localApiKey?.()||''}}); render();} catch {el('reports-body').innerHTML = `<tr><td colspan="6">${t('error')}</td></tr>`;} }
+async function loadReports() { try {reports = await api('/api/reports',{headers:{'X-API-Key':window.localApiKey?.()||''}}); render();} catch {el('reports-body').innerHTML = `<tr><td colspan="7">${t('reportsAuthHint')}</td></tr>`;} }
 document.addEventListener('click',async event=>{
   const anchor=event.target.closest('a[href^="/api/reports/"]');
   if(!anchor)return;

@@ -1,12 +1,14 @@
 // Localize accessibility labels and document title alongside visible UI text.
 const accessibilityLabels = {
-  uz: {nav:'Asosiy menyu', language:'Til', chart:'Soatlik tranzaksiyalar grafigi', filter:'Holat bo‘yicha saralash', title:'SentinelAI — firibgarlik tahlili'},
-  ru: {nav:'Основное меню', language:'Язык', chart:'График транзакций по часам', filter:'Фильтр по статусу', title:'SentinelAI — анализ мошенничества'},
-  en: {nav:'Main navigation', language:'Language', chart:'Hourly transaction chart', filter:'Filter status', title:'SentinelAI — fraud analytics'},
+  uz: {nav:'Asosiy menyu',reviewNav:'Tekshiruv va nazorat menyusi',language:'Til', chart:'Soatlik tranzaksiyalar grafigi', filter:'Holat bo‘yicha saralash', title:'SentinelAI — firibgarlik tahlili'},
+  ru: {nav:'Основное меню',reviewNav:'Меню проверки и контроля',language:'Язык', chart:'График транзакций по часам', filter:'Фильтр по статусу', title:'SentinelAI — анализ мошенничества'},
+  en: {nav:'Main navigation',reviewNav:'Review and control navigation',language:'Language', chart:'Hourly transaction chart', filter:'Filter status', title:'SentinelAI — fraud analytics'},
 };
 function updateAccessibilityLabels() {
   const labels = accessibilityLabels[document.documentElement.lang] || accessibilityLabels.uz;
-  document.querySelector('.sidebar nav').setAttribute('aria-label', labels.nav);
+  const navs = document.querySelectorAll('.sidebar nav');
+  navs[0].setAttribute('aria-label', labels.nav);
+  navs[1].setAttribute('aria-label', labels.reviewNav);
   document.querySelector('#language').setAttribute('aria-label', labels.language);
   document.querySelector('#hourly-chart').setAttribute('aria-label', labels.chart);
   document.querySelector('#filter').setAttribute('aria-label', labels.filter);

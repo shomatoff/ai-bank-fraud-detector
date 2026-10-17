@@ -162,3 +162,7 @@ Faol modelni almashtirmasdan `scripts/audit_generalization.py` orqali 842-seed, 
 ### Customer-disjoint CI qo‘shimchasi
 
 `4357fce` private `main`ga push qilindi; [Actions run 39067893435](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39067893435) `verify` va Docker build/start/health bilan **success**. Natija fayli va maxfiy/real ma'lumotlar Git'ga qo‘shilmadi. Bu CI yozuvi hujjat-only keyingi pushga kiradi.
+
+### 2026-10-18 dashboard qo‘shimchasi
+
+Lokal dashboard 8 sahifaga kengaydi: sintetik model-ranked tekshiruv navbati, demo monitoring/PSI va admin-only feedback statuslari, 11 qismli imkoniyat-cheklov xaritasi qo‘shildi; overview tezkor havolalari va hisobot statusi ko‘rinadi. Uch til va mobil layout Chrome’da tekshirildi. Jonli bank ma’lumoti, real to‘lov qarori, production auth yoki avtomatik rollback qo‘shilmadi; faol v6 model o‘zgarmadi. Lokal 39 test o‘tdi (1 tashqi SHAP warning), Ruff va JS sintaksisi toza, live browser smoke o‘tdi. Tafsilot [asosiy hisobot](IMPLEMENTATION_REPORT_UZ.md)da; ushbu o‘zgarishning GitHub CI holati pushdan so‘ng qo‘shiladi.

@@ -28,9 +28,18 @@ def _i18n_keys(source: str, locale: str) -> set[str]:
 
 
 def test_i18n_has_the_same_effective_keys_in_all_locales():
-    source = (ROOT / "web/app.js").read_text(encoding="utf-8")
+    source = "\n".join(
+        (ROOT / name).read_text(encoding="utf-8")
+        for name in ("web/app.js", "web/operations.js")
+    )
     locales = {locale: _i18n_keys(source, locale) for locale in ("en", "uz", "ru")}
     assert locales["en"] == locales["uz"] == locales["ru"]
+    html = (ROOT / "web/index.html").read_text(encoding="utf-8")
+    visible_keys = set(re.findall(r'data-i18n="([A-Za-z][A-Za-z0-9_]*)"', html))
+    assert visible_keys <= locales["en"]
+    for page in ("queue", "operations", "capabilities"):
+        assert f'id="page-{page}"' in html
+        assert f'data-page="{page}"' in html
 
 
 def test_production_sources_do_not_contain_hard_coded_secret_material():
