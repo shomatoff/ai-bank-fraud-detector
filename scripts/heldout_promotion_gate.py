@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 from sklearn.metrics import average_precision_score
@@ -24,6 +25,14 @@ MIN_HELDOUT_RECALL = 0.20
 
 def promotion_decision(rows: dict[str, dict], tolerance: float = MAX_RECALL_DROP,
                        minimum_recall: float = MIN_HELDOUT_RECALL) -> dict:
+    if not rows or not all(math.isfinite(value) and 0 <= value <= 1
+                           for value in (tolerance, minimum_recall)):
+        raise ValueError("Gate requires typologies and finite limits in [0,1]")
+    for name, values in rows.items():
+        for field in ("baseline_recall", "challenger_recall"):
+            value = values.get(field)
+            if not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
+                raise ValueError(f"{name}: {field} must be finite and in [0,1]")
     regression_failures = [name for name, values in rows.items()
                            if values["challenger_recall"] < values["baseline_recall"] - tolerance]
     coverage_failures = [name for name, values in rows.items()

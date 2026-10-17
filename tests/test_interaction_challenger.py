@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from fraud_detector.event_stream import generate_event_stream
 from fraud_detector.features import FEATURES
@@ -48,3 +49,12 @@ def test_rejected_challenger_is_not_deployed_without_new_gate():
     assert decision["regression_failures"] == ["account_takeover"]
     assert decision["minimum_recall_failures"] == ["account_takeover", "card_testing"]
     assert decision["failed_typologies"] == ["account_takeover", "card_testing"]
+
+
+def test_gate_rejects_empty_or_nonfinite_metrics():
+    with pytest.raises(ValueError, match="requires typologies"):
+        promotion_decision({})
+    with pytest.raises(ValueError, match="challenger_recall must be finite"):
+        promotion_decision({"card_testing": {
+            "baseline_recall": .1, "challenger_recall": float("nan"),
+        }})

@@ -22,3 +22,4 @@ This plan deliberately excludes GitHub pushes, tags/releases and social publicat
 6. Boshqa seedda to‘rtta held-out fraud turiga promotion gate — **bajarildi; FAILED**, uch turdagi katta recall regressiyasi tufayli faol v6 model saqlandi. `tests/test_interaction_challenger.py` qayta tasodifiy chiqarib yuborishni to‘sadi.
 7. Asl ULB CSV, checksum, alohida public benchmark — **kutilmoqda**; rasmiy download 404, fayl va Kaggle credentials yo‘q. Uchinchi tomon mirror ishlatilmadi.
 8. Ruxsatli real bank/shadow sinovi, delayed labels, privacy va mustaqil audit — **bajarilmagan**; bu loyiha bank darajasida deb e’lon qilinmaydi.
+9. Promotion gate’ni yomonlashmaslik + minimal holdout recall + finite input nazorati bilan mustahkamlash — **bajarildi**; faol modelni chiqarish hali `promote=false`.

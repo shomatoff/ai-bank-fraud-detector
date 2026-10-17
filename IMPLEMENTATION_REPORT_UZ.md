@@ -150,3 +150,7 @@ Eski v4/v5 tarixiy matn o‘zgartirilmadi; bu bo‘lim joriy holatni qo‘shadi.
 ### Qo‘shimcha Git va gate natijasi
 
 `d1136ff` private `main`ga push qilindi; [CI run 39065413758](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39065413758) `verify` hamda Docker build/start/health joblari bilan **success** bo‘ldi. Git staging tekshiruvida lokal API-key, model joblib, SQLite, benchmark/trening JSON fayllari ignore qilingani, maxfiy kalit/token patternlari topilmagani tasdiqlandi. Promotion gate’ga keyin qo‘shilgan ikkinchi shart — har ko‘rilmagan turda kamida 0,20 recall — `card_testing`ning 0 natijasini ham rad etadi; qayta bajarilgan 342-seed gate’da `promote=false`, to‘rttala tur minimum shartdan o‘tmadi. Bu sintetik xavfsizlik mezoni, bank qabul standarti emas. Yangi gate kodi mahalliy 3 test va Ruff’dan o‘tdi; keyingi Git push uchun CI alohida tekshiriladi.
+
+### Qo‘shimcha nazorat — 2-push va noto‘g‘ri metrika himoyasi
+
+`b6cb856` private `main`ga push qilindi; [CI run 39065624573](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39065624573) `verify` va Docker build/health bilan **success**. Visibility `PRIVATE`, fork 0, collaborator faqat `shomatoff` deb tekshirildi. Gate’dagi keyingi tuzatish bo‘sh yoki `NaN`/cheksiz/noto‘g‘ri recallni rad etadi, chunki `NaN` oddiy taqqoslashdan sirg‘alib o‘tishi mumkin; 4 fokus test va Ruff lokal o‘tdi. Bu hali faqat sintetik laborant mezoni, faol v6 model o‘zgarmagan. Ushbu so‘nggi tuzatishning GitHub CI’si keyingi push’da tekshiriladi.

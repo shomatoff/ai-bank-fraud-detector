@@ -142,3 +142,7 @@ Avvalgi matn tarixiy holda saqlandi. [Tajriba va promotion-gate dalillari](docs/
 ### 2026-10-18 Git/CI qo‘shimchasi
 
 Private `main`ga `d1136ff` push qilindi; [Actions run 39065413758](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39065413758) test/Ruff/audit/trening/smoke va Docker build/health bilan yashil. Keyingi gate qat’iylashtirilib har yangi fraud turida sintetik recall kamida 0,20 talab qilindi: qayta 342-seed sinovda to‘rtala tur minimumdan o‘tmadi, `promote=false`. Faol model o‘zgarmadi. Ikkinchi kod/doc push uchun CI alohida ko‘riladi; hech qanday GitHub Release yoki ijtimoiy post e’lon qilinmadi.
+
+### Qo‘shimcha 2-push nazorati
+
+`b6cb856` private `main`ga push qilindi; [Actions run 39065624573](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39065624573) `verify` va Docker’da yashil. Repo `PRIVATE`, fork 0, collaborator faqat `shomatoff`. Gate endi bo‘sh, `NaN`, cheksiz yoki [0,1]dan tashqari recallni rad etadi; 4 fokus test va Ruff lokal o‘tdi. So‘nggi o‘zgarish keyingi push/CI’da tekshiriladi. Faol v6 model o‘zgarmadi.
