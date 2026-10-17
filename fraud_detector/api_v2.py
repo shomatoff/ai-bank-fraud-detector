@@ -21,6 +21,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .evaluation import select_cost_threshold, threshold_metrics
 from .features import FEATURES, Transaction
+from .label_policy import feedback_summary
+from .operations import RateLimiter, possible_card_testing_burst, review_queue
 from .reporting import report_html, report_pdf, reports_csv
 from .synthetic import generate_transactions
 from .training import (
@@ -161,6 +163,10 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR, *, auto_train: bool = True) ->
     demo = generate_transactions(1000, 2026)
     app = FastAPI(title="AI Bank Fraud Detector — synthetic local lab", version="v6-local")
     app.state.local_api_keys = api_keys
+    app.state.rate_limiter = RateLimiter()
+    app.state.rate_limits = {
+        "score": 120, "batch": 10, "report_write": 60, "analytics": 30,
+    }
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
     csrf_token = secrets.token_urlsafe(32)
 
@@ -172,6 +178,27 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR, *, auto_train: bool = True) ->
         origin = request.headers.get("origin")
         if origin and origin != f"{request.url.scheme}://{request.headers['host']}":
             return JSONResponse({"detail": "Invalid origin"}, status_code=403)
+        path = request.url.path
+        scope = None
+        if request.method == "POST" and path == "/api/score":
+            scope = "score"
+        elif request.method == "POST" and path == "/api/score/batch":
+            scope = "batch"
+        elif request.method in {"POST", "PATCH"} and path.startswith("/api/reports"):
+            scope = "report_write"
+        elif (request.method == "GET" and path in {"/api/review-queue", "/api/monitoring"}
+              or request.method == "POST" and path == "/api/threshold/preview"):
+            scope = "analytics"
+        if scope:
+            client = request.client.host if request.client else "unknown"
+            retry = app.state.rate_limiter.check(
+                f"{client}:{scope}", limit=app.state.rate_limits[scope]
+            )
+            if retry:
+                return JSONResponse(
+                    {"detail": "Local request rate limit exceeded"}, status_code=429,
+                    headers={"Retry-After": str(retry), "Cache-Control": "no-store"},
+                )
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -216,6 +243,33 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR, *, auto_train: bool = True) ->
     def get_metrics():
         return metrics
 
+    @app.get("/api/monitoring")
+    def get_monitoring():
+        probabilities = model.predict_proba(demo[FEATURES])[:, 1]
+        threshold = metrics["threshold"]
+        return {
+            "source": "fixed 1000-row synthetic demo sample; not production monitoring",
+            "rows": len(demo), "review_capacity_default": 20,
+            "model_threshold": threshold,
+            "alerts_at_model_threshold": int(np.count_nonzero(probabilities >= threshold)),
+            "alert_rate_at_model_threshold": round(float(np.mean(probabilities >= threshold)), 4),
+            "validation_test_diagnostics": metrics.get("monitoring", {}),
+            "live_telemetry_available": False,
+            "rollback_automatic": False,
+        }
+
+    @app.get("/api/review-queue")
+    def get_review_queue(capacity: int = 20):
+        if not 1 <= capacity <= 100:
+            raise HTTPException(422, "capacity must be 1..100")
+        probabilities = model.predict_proba(demo[FEATURES])[:, 1]
+        return {
+            "source": "fixed synthetic demo sample; no live decisions",
+            "ranking": "ML probability only; card-testing hint does not affect rank",
+            "capacity": capacity,
+            "items": review_queue(demo[FEATURES].to_dict(orient="records"), probabilities, capacity),
+        }
+
     @app.get("/api/overview")
     def overview():
         by_hour = demo.groupby("hour", observed=True).agg(
@@ -257,12 +311,17 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR, *, auto_train: bool = True) ->
             signals.append("prior_declines")
         if transaction.amount >= 1000:
             signals.append("large_amount")
+        card_testing_hint = possible_card_testing_burst(data)
+        if card_testing_hint:
+            signals.append("possible_card_testing_burst")
         model_reasons = explain(model, data)
         model_reasons.pop("all_contributions")
         return {
             "probability": round(probability, 4), "level": level,
             "threshold": threshold, "review_recommended": probability >= threshold,
             "signals": signals, "signals_type": "hand_written_descriptive_rules",
+            "secondary_review_hint": card_testing_hint,
+            "secondary_hint_changes_model_decision": False,
             "model_explanation": model_reasons,
             "disclaimer": "Synthetic score; linear explanation is not causal. Human review only.",
         }
@@ -367,6 +426,13 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR, *, auto_train: bool = True) ->
                 "FROM reports ORDER BY id DESC LIMIT 100"
             ).fetchall()
             return [dict(row) for row in rows]
+
+    @app.get("/api/feedback/summary")
+    def get_feedback_summary(x_api_key: str = Header(default="")):
+        require_role(x_api_key, "admin")
+        with connect(db_path) as db:
+            rows = db.execute("SELECT status, created_at, updated_at FROM reports").fetchall()
+        return feedback_summary([dict(row) for row in rows], as_of=datetime.now(UTC))
 
     @app.get("/api/reports/export.csv")
     def export_reports_csv(x_api_key: str = Header(default="")):

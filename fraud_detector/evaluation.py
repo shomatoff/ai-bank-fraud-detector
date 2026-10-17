@@ -140,21 +140,35 @@ def select_cost_threshold(labels, scores, fp_cost: float, fn_cost: float, max_al
         raise ValueError("costs must be nonnegative")
     if not 0 < max_alert_rate <= 1:
         raise ValueError("max_alert_rate must be in (0,1]")
+    labels = np.asarray(labels, dtype=int)
     scores = np.asarray(scores, dtype=float)
-    candidates = np.r_[np.nextafter(scores.max(), np.inf), np.unique(scores)]
-    best = None
-    for threshold in candidates:
-        result = threshold_metrics(labels, scores, threshold)
-        if result["alert_rate"] > max_alert_rate + 1e-12:
+    if (not len(scores) or len(labels) != len(scores) or not np.isfinite(scores).all()
+            or not np.isin(labels, [0, 1]).all()):
+        raise ValueError("Use nonempty, finite scores and matching binary labels")
+    # Group score ties once. Repeated confusion_matrix over every distinct
+    # threshold was quadratic on the 284k-row public benchmark.
+    order = np.argsort(scores, kind="stable")
+    sorted_scores, sorted_labels = scores[order], labels[order]
+    unique, starts, counts = np.unique(sorted_scores, return_index=True, return_counts=True)
+    positives = np.add.reduceat(sorted_labels, starts)
+    alerts = np.cumsum(counts[::-1])[::-1]
+    true_positives = np.cumsum(positives[::-1])[::-1]
+    total_positives = int(labels.sum())
+    above_max = float(np.nextafter(unique[-1], np.inf))
+    best_key = (fn_cost * total_positives, 0.0, above_max)
+    best_threshold = above_max
+    for threshold, alert_count, tp in zip(unique, alerts, true_positives, strict=True):
+        if alert_count / len(scores) > max_alert_rate + 1e-12:
             continue
-        matrix = result["confusion_matrix"]
-        cost = fp_cost * matrix["fp"] + fn_cost * matrix["fn"]
-        if best is None or (cost, -result["recall"], threshold) < (
-            best["estimated_cost"], -best["recall"], best["threshold"]
-        ):
-            best = {**result, "estimated_cost": float(cost)}
-    assert best is not None
-    return best
+        fp = int(alert_count - tp)
+        fn = total_positives - int(tp)
+        recall = int(tp) / total_positives if total_positives else 0.0
+        key = (fp_cost * fp + fn_cost * fn, -recall, float(threshold))
+        if key < best_key:
+            best_key = key
+            best_threshold = float(threshold)
+    result = threshold_metrics(labels, scores, best_threshold)
+    return {**result, "estimated_cost": float(best_key[0])}
 
 
 def diagnostic_curves(labels, scores) -> dict:

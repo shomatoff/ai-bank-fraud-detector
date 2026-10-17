@@ -70,3 +70,40 @@ Even a later successful ULB run would not establish bank performance: old anonym
 ## 2026-10-18 source-access follow-up
 
 The official Kaggle dataset page was checked again and still described the 284,807-row, 492-fraud ULB/Worldline CSV. A `curl -L -I` request to Kaggle's unauthenticated `api/v1/datasets/download/mlg-ulb/creditcardfraud` endpoint returned **HTTP 404**; no local Kaggle credentials or canonical CSV were present. No third-party mirror was silently substituted. Therefore the real ULB benchmark remains **NOT RUN**. The model-improvement candidate was instead evaluated only on independent synthetic seeds and rejected by a held-out-typology promotion gate; see [the Uzbek experiment report](AI_CHALLENGER_EVALUATION_UZ.md).
+
+## 2026-10-18 later update — official Kaggle ULB v3 benchmark EXECUTED
+
+The **historical NOT RUN statements above describe earlier checks, not the current state**. Later on 2026-10-18, the official [Kaggle ULB/Worldline dataset](https://www.kaggle.com/mlg-ulb/creditcardfraud/data) was downloaded with Kaggle's [kagglehub client](https://github.com/Kaggle/kagglehub), using handle `mlg-ulb/creditcardfraud/versions/3` and `path="creditcard.csv"`. No login or third-party mirror was used. The downloaded local file has SHA256 `76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89`, 284,807 rows, 31 expected columns, 492 positives and no missing values. This digest pins **our downloaded copy**, not a separately signed upstream canonical digest. The 144 MiB CSV and complete JSON result are gitignored and **not** committed. The source's license/terms should be reviewed at its page before independent reuse.
+
+The first attempt was stopped after about four minutes because the previous threshold search recomputed a confusion matrix for every distinct score and heated the laptop. `select_cost_threshold` now groups ties and uses cumulative counts; randomized small-case tests compare it exactly to the original exhaustive policy. The benchmark was rerun with `cpulimit -f -l 35`, finished successfully, and the CPU sensor remained around 46°C during the throttled run. Reproduction:
+
+```bash
+.venv/bin/python -m pip install -r requirements-benchmark.txt
+.venv/bin/python -c 'import kagglehub; print(kagglehub.dataset_download("mlg-ulb/creditcardfraud/versions/3", path="creditcard.csv", output_dir="data/public/ulb-v3"))'
+sha256sum data/public/ulb-v3/creditcard.csv
+cpulimit -f -l 35 -- .venv/bin/python -m scripts.run_public_benchmark \
+  --csv data/public/ulb-v3/creditcard.csv \
+  --sha256 76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89 \
+  --seed 42 --output data/public_benchmark_results.json
+```
+
+The predeclared chronological split was fit **170,888**, validation **56,957**, test **56,962** (75 test positives). Validation PR-AUC selected **logistic regression**: logistic `.650727`, histogram gradient boosting `.271005`, LightGBM `.147554`. XGBoost was not installed, so it has **no result**. One untouched test evaluation followed this validation choice:
+
+| Model | Test PR-AUC | Exact 1%: TP/FP of 570 alerts | Exact 5%: TP/FP of 2,848 alerts |
+|---|---:|---:|---:|
+| Logistic, validation-selected | .696457 | 65/505 | 67/2781 |
+| Histogram gradient boosting | .281579 | 45/525 | 45/2803 |
+| LightGBM | .214938 | 41/529 | 43/2805 |
+| Fixed amount rule | .001448 | 3/567 | 7/2841 |
+| Always normal | .001317 prevalence baseline | 0 alerts | 0 alerts |
+
+For selected logistic, the **validation-chosen threshold** `.04728844` gave 114/56,962 alerts (0.2001%): TP57/FP57/FN18/TN56,830, precision `.5000`, recall `.7600`, F1 `.6032`. The **retrospective exact-volume** top-K diagnostic, not a deployable threshold, yielded:
+
+| Budget | Alerts | TP | FP | Precision | Recall |
+|---|---:|---:|---:|---:|---:|
+| 0.5% | 285 | 62 | 223 | .2175 | .8267 |
+| 1% | 570 | 65 | 505 | .1140 | .8667 |
+| 5% | 2,848 | 67 | 2,781 | .0235 | .8933 |
+| 10% | 5,696 | 69 | 5,627 | .0121 | .9200 |
+
+The script's **idealized perfect-label feedback demo**, not observed analyst feedback, changed test PR-AUC `.696457 → .709455`; exact-5% TP `67 → 68`, FP `2781 → 2780`. Its validation-selected threshold comparison changed 80 alerts/TP54/FP26 to 73 alerts/TP53/FP20. This is one historical two-day dataset, with 75 test fraud labels and no customer-level leakage assessment or modern threat coverage. The test has now been observed and must **not** be used for further model/policy tuning; a new time period and external bank shadow holdout are needed. The public PCA model is separate from the synthetic 10-feature local API and **was not promoted** into it. See [five-stage upgrade](FIVE_STAGE_UPGRADE_UZ.md).

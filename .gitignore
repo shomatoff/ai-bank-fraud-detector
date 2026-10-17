@@ -13,6 +13,7 @@ data/*.json
 data/*.key
 data/*.sqlite3
 data/*.sqlite3-*
+data/public/
 verification_bundle/
 verification_bundle.zip
 !data/.gitkeep

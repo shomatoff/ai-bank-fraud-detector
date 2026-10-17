@@ -1,3 +1,4 @@
 -r requirements-dev.txt
 lightgbm==4.7.0
 shap==0.53.0
+kagglehub==1.0.2
