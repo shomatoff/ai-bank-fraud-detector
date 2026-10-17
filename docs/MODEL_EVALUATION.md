@@ -1,64 +1,62 @@
-# Executed model evaluation — synthetic-only v4
+# Model evaluation — current v6-local synthetic audit
 
-Run: 2026-10-15, `.venv/bin/python -m fraud_detector.model`; source of exact values: regenerated local `data/metrics.json`. This documents executed results, **not real-bank effectiveness**. The v4 model was selected/thresholded before its March synthetic test labels were examined; later addition of retrospective top-k reporting did not alter that model or threshold. Any future tuning informed by this test requires a *new* untouched test.
+**Primary result:** 10 independent development seeds 42–51, each with a new later test seed 400045–400054. At **exactly 5%** retrospective alert volume (150 of 3,000 per test), logistic ML precision is **0.8313 [0.8147, 0.8487]**, recall **0.6689 [0.6566, 0.6799]**, and test PR-AUC **0.7455 [0.7219, 0.7656]**. Brackets are 95% percentile bootstrap intervals over the ten seed-level results (10,000 resamples, bootstrap seed 518), *not* a bank-performance confidence interval. Synthetic labels are not verified customer wrongdoing. Full per-seed JSON and execution output: `data/v6_evaluation.json` (local, ignored) and `verification_bundle/v6_evaluation.txt`. Reproduce with `.venv/bin/python -m scripts.v6_evaluation --seeds 10 --rows 12000 --heldout-rows 30000`.
 
-## Design and leakage controls
+Each seed generates 12,000 January development events: first 7,200 fit, next 2,400 disjoint calibration, final 2,400 validation. The test is a separately generated 3,000-row March stream. Model regularization, optional Platt use and cost-constrained threshold are chosen without test labels. Past-only velocity/declines are computed chronologically; scenario, synthetic customer ID, time and label are not model inputs. The **new-account fraud episodes are spread over the full simulated month**, and account age is evaluated relative to each account's opening time. The generator test asserts at least 10 events of every scenario in each fit/calibration/validation/test window at default sizes. This corrects the v5 early-window bias, but does not eliminate simulator coupling or customer/episode dependence.
 
-The seeded customer event stream is chronological. January development (`seed=42`, 12,000 rows) was cut by time into fit 7,800 (65%), calibration 1,200 (10%), and validation 3,000 (25%). March test (`seed=200045`, 3,000 rows) is freshly generated, later in simulated time, and held out from fitting, calibration, model choice and default threshold choice. Fraud counts/rates: fit 566/7,800 = 7.2564%; calibration 50/1,200 = 4.1667%; validation 116/3,000 = 3.8667%; test 176/3,000 = 5.8667%. The time-rate mismatch is a simulator limitation.
+## Exact top-k comparison — ten-seed means [95% seed-bootstrap CI]
 
-The two predeclared logistic candidates had validation PR-AUC 0.76911196 (`C=1`) and 0.76663714 (`C=.25`); `C=1` won. Fitted one-hot/scaler parameters see fit rows only. Platt calibration uses only the disjoint calibration slice. The default threshold minimizes `1×FP + 10×FN` on validation while limiting validation alerts to at most 10%, yielding **0.08581994158148241**. On validation it alerted 157/3,000 (5.2333%), with TP96 FP61 FN20 TN2823, precision .611465 and recall .827586. The cost weights are illustrative and editable in the dashboard, not bank loss estimates.
+All three methods rank the **same** synthetic test rows; actual alerts are 15/30/150/300 of 3,000 at 0.5/1/5/10%. Exact top-k requires the full score batch and is **not** a live deployable threshold. The fixed hand rule was written with knowledge of this generator; it is not an independent baseline. A depth-3 decision tree is fit on the same fit window as logistic ML. An independent human review of the hand rule is still recommended.
 
-`velocity_1h` and `prior_declines_24h` use only preceding same-customer events; the current event and label are excluded. Scenario, synthetic customer ID, timestamp, decline flag and target are never scoring features. Nonetheless feature/label distribution comes from one easy simulator, so there is severe *generator coupling* even with no row-level future leakage. [Data card](DATA_CARD.md), [scenarios](SYNTHETIC_SCENARIOS.md).
+| Budget | Model | Precision | Recall |
+|---|---|---:|---:|
+| 0.5% | Fixed rule | .5467 [.5000,.5933] | .0440 [.0402,.0477] |
+| 0.5% | Depth-3 tree | .8400 [.8000,.8800] | .0678 [.0637,.0718] |
+| 0.5% | Logistic ML | .8600 [.7933,.9133] | .0693 [.0634,.0745] |
+| 1% | Fixed rule | .7067 [.6867,.7300] | .1138 [.1103,.1176] |
+| 1% | Depth-3 tree | .8300 [.8133,.8500] | .1337 [.1292,.1381] |
+| 1% | Logistic ML | .8667 [.8067,.9067] | .1396 [.1297,.1473] |
+| 5% | Fixed rule | .5927 [.5740,.6087] | .4766 [.4669,.4855] |
+| 5% | Depth-3 tree | .7447 [.7233,.7680] | .5991 [.5845,.6143] |
+| 5% | Logistic ML | .8313 [.8147,.8487] | .6689 [.6566,.6799] |
+| 10% | Fixed rule | .4663 [.4580,.4753] | .7506 [.7359,.7649] |
+| 10% | Depth-3 tree | .4677 [.4547,.4797] | .7533 [.7253,.7787] |
+| 10% | Logistic ML | .5333 [.5250,.5427] | .8584 [.8439,.8696] |
 
-## Final test at validation-selected default policy
+Paired **ML minus fixed rule** differences, bootstrap resampling the ten paired seed-level differences:
 
-| Metric | Executed result |
-|---|---:|
-| Fraud prevalence | 176/3,000 = 5.8667% |
-| Alerts | 236/3,000 = 7.8667% |
-| Precision | 167/236 = 0.707627 |
-| Recall | 167/176 = 0.948864 |
-| F1 | 0.810680 |
-| PR-AUC / average precision | 0.893556 |
-| ROC AUC | 0.977438 |
-| False-positive rate | 69/2,824 = 0.024433 |
-| Brier, calibrated | 0.012800 |
-| Brier, raw before Platt | 0.012016 — **better than calibrated** |
-
-| Actual / predicted | Normal | Alert |
+| Budget | Precision difference [95% CI] | Recall difference [95% CI] |
 |---|---:|---:|
-| Normal | TN 2,755 | FP 69 |
-| Fraud | FN 9 | TP 167 |
+| 0.5% | +.3133 [.2067,.4000] | +.0253 [.0166,.0326] |
+| 1% | +.1600 [.0867,.2100] | +.0258 [.0138,.0340] |
+| 5% | +.2387 [.2233,.2520] | +.1923 [.1786,.2045] |
+| 10% | +.0670 [.0590,.0747] | +.1078 [.0949,.1198] |
 
-Thus 9 simulator fraud labels were missed and 69 simulator normal labels created review workload. Platt was implemented but **did not improve Brier on this test**. The reliability, PR and ROC curves in the dashboard are test diagnostics, not selection inputs. The high metrics reflect especially distinctive artificial scenarios and are not comparable as an algorithm-only improvement over the old generator.
+The always-normal baseline flags **zero** rows at every budget: precision/recall/F1/FPR = 0, with PR-AUC equal to each test's prevalence; it does not artificially fill a quota. Full F1, FPR, confusion matrices, nominal validation-derived thresholds and **actual** flagged fractions for each method/seed are in the execution output. Nominal thresholds are secondary because a validation quota need not produce the same test alert rate.
 
-## Baselines and equal alert-budget comparisons
+## Label-noise and capacity limits
 
-Always-normal has zero alerts, TP0 FP0 FN176 TN2824, precision/recall/F1/FPR 0, PR-AUC equal to prevalence .058667 and ROC AUC .5. It has 94.1333% accuracy while detecting nothing. A frozen hand-written score adds 2 for new device, 1.5 each for velocity≥3, prior decline≥1 and transfer, 1 for amount≥1200 and age<90 days, 0.5 for country risk≥1, plus min(amount/100000,.1). It was not fitted on test labels. Fixed-rule PR-AUC is .750108, ROC AUC .970813; ML PR-AUC .893556, ROC AUC .977438. Rule score is not a probability; no Brier is assigned.
+The four fraud typologies draw positive labels with `p=.88`; normal events draw .01 and `legit_many_declines` .02. If a ranking selected *only* those fraud-typology events, its **expected** precision would be about .88. This is *not* a deterministic finite-sample upper bound: random draws and mixed scenario selection can make observed precision higher or lower. At exact k, recall is arithmetically at most `min(1, k / test_positives)` regardless of model. Across these ten tests the mean arithmetic recall ceiling is .0805 at 0.5%, .1610 at 1%, .8052 at 5%, and 1.0000 at 10%; each seed's ceiling is printed beside its metrics in the output. These constraints expose artificial-label difficulty; they are not evidence of real fraud detection.
 
-Thresholds fixed from **validation** at nominal budgets; actual test volumes drift:
+## Calibration and one labelled example
 
-| Policy / nominal budget | Test alerts | TP/FP/FN/TN | Precision | Recall | F1 | FPR |
-|---|---:|---|---:|---:|---:|---:|
-| Always normal / 5% or 10% | 0 | 0/0/176/2824 | 0 | 0 | 0 | 0 |
-| Rules / 5% | 219 (7.3%) | 147/72/29/2752 | .671233 | .835227 | .744304 | .025496 |
-| ML / 5% | 232 (7.733%) | 167/65/9/2759 | .719828 | .948864 | .818627 | .023017 |
-| Rules / 10% | 372 (12.4%) | 165/207/11/2617 | .443548 | .937500 | .602190 | .073300 |
-| ML / 10% | 353 (11.767%) | 169/184/7/2640 | .478754 | .960227 | .638941 | .065156 |
+Platt was enabled by validation Brier **and** 10-bin ECE for seeds **42,43,44,46,49,50,51** and disabled for **45,47,48**. A separate forced-off run was executed for every seed. Forced-off exact-5% precision **.8313 [.8147,.8487]**, recall **.6689 [.6566,.6799]**, and PR-AUC **.7455 [.7219,.7656]** match the conditional-calibration results because Platt's fitted sigmoid preserved score ranking here; probability calibration, Brier and nominal thresholds need not match. The per-seed decision is printed in `v6_evaluation.txt`.
 
-For a strictly **same realized test volume**, the following *retrospective* ranking selects the highest test scores without looking at test labels. This is a descriptive offline comparison, **not a deployable threshold**, because the full batch score distribution is needed:
+**Seed 42 only, not a headline:** test seed 400045 has 3,000 rows, 184 positives. Validation chose threshold `.20284049321690387`; default-threshold confusion is TN2749/FP67/FN32/TP152, precision `.694064`, recall `.826087`, PR-AUC `.757606`, ROC AUC `.927837`, Brier `.023250`. At exact 5%, ML TP126/FP24/FN58/TN2792 (precision .8400, recall .6848), rule TP92/FP58/FN92/TN2758, tree TP111/FP39/FN73/TN2777. These single-seed values are **examples only**.
 
-| Budget / model | Alerts | TP/FP/FN/TN | Precision | Recall | F1 | FPR |
-|---|---:|---|---:|---:|---:|---:|
-| 5% / rules | 150 | 106/44/70/2780 | .706667 | .602273 | .650307 | .015581 |
-| 5% / ML | 150 | 138/12/38/2812 | .920000 | .784091 | .846626 | .004249 |
-| 10% / rules | 300 | 160/140/16/2684 | .533333 | .909091 | .672269 | .049575 |
-| 10% / ML | 300 | 169/131/7/2693 | .563333 | .960227 | .710084 | .046388 |
+## Held-out fraud typologies
 
-The always-normal policy remains at zero alerts and cannot fill an alert budget meaningfully. No threshold was retuned on test labels.
+For each row, its named type was removed from fit **and** validation. Model selection and threshold use known types on validation only. A separate **30,000-row** May stream with seed **900045** contains 450 events of each held-out type and at least 200 positive labels. The 95% interval bootstraps positive **rows**, not independent customer/episode clusters, so it can be optimistic.
 
-## Monitoring and limitations
+| Withheld type | Positives | TP / FN | Recall [95% positive-row bootstrap CI] |
+|---|---:|---:|---:|
+| Account takeover | 401 | 297 / 104 | .7406 [.6983,.7830] |
+| Card testing | 393 | 5 / 388 | **.0127 [.0025,.0254]** |
+| Mule / cash-out | 392 | 344 / 48 | .8776 [.8444,.9082] |
+| New-account transfer | 396 | 271 / 125 | .6843 [.6389,.7298] |
 
-Amount PSI between validation and test is .008654; deliberately multiplying test amounts by 1.5 yields .141876. These are descriptive synthetic examples, not a universal drift alarm. Per-slice metrics are generated for channel, artificial `country_risk`, and account age; the **card-present slice has 0/4 fraud labels recovered**, despite high aggregate recall. Four positives are too few to generalize, but this failure must not be hidden. Country-risk is not a real country or fairness proxy.
+The near-zero unseen card-testing recall is a serious simulator-level failure. It does not justify deployment or an inference about real cards. Subgroup recall elsewhere is marked **not evaluable** when fewer than 30 positives; no fairness conclusion is drawn.
 
-Synthetic accuracy cannot establish operational effectiveness: real base rates, delayed labels, adversarial adaptation, false-alarm cost, customer harm, distributions, legal/privacy constraints, and temporal drift differ. This project contains no bank-grade security certification, production validation, real-world calibration, prospective shadow trial or external fairness study. See [capabilities](FRAUD_DETECTION_CAPABILITIES.md), [model card](MODEL_CARD.md), and [integration roadmap](BANKING_INTEGRATION_ROADMAP.md).
+## Historical results and boundaries
+
+**Historical v5 (different generator and test seeds):** exact-5% ten-seed precision .813333 [.800667,.828667], recall .661446 [.648752,.674807], PR-AUC .731488 [.715733,.750300]. The v6 changes were not a controlled algorithm-only A/B test. Earlier v2/v3/v4 tables and the full v5 evaluation were moved to [the archive](archive/MODEL_EVALUATION_V2_V5.md); none is the current headline. Synthetic accuracy, even with confidence intervals, cannot establish real-bank effectiveness. No real/public CSV benchmark ran in v6 because `data/public/` was absent. No automatic transaction blocking or real-bank integration exists.

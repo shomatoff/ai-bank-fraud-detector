@@ -32,10 +32,10 @@ def test_generator_is_reproducible_and_has_no_identifiers():
 
 def test_training_metrics_are_held_out(tmp_path):
     m = train(count=2000, seed=9, output_dir=tmp_path)
-    assert m["train_rows"] == 1300 and m["calibration_rows"] == 200 and m["validation_rows"] == 500 and m["test_rows"] == 500
+    assert m["train_rows"] == 1200 and m["calibration_rows"] == 400 and m["validation_rows"] == 400 and m["test_rows"] == 500
     assert sum(m["confusion_matrix"].values()) == 500
-    assert m["artifact_version"] == 4
-    assert m["test_seed"] == 200012
+    assert m["artifact_version"] == 6
+    assert m["test_seed"] == 400012
     assert m["selected_model"] == max(m["validation_pr_auc"], key=m["validation_pr_auc"].get)
     assert 0 < m["review_budget"] < 1
     assert 0 <= m["pr_auc"] <= 1
@@ -60,9 +60,12 @@ def test_reports_require_csrf_and_store_only_allowed_fields(client, transaction)
     payload = {"transaction": transaction, "note": "Synthetic review"}
     assert client.post("/api/reports", json=payload).status_code == 403
     token = client.get("/api/config").json()["csrf_token"]
-    response = client.post("/api/reports", json=payload, headers={"X-CSRF-Token": token})
+    assert client.post("/api/reports", json=payload, headers={"X-CSRF-Token": token}).status_code == 401
+    response = client.post("/api/reports", json=payload, headers={
+        "X-CSRF-Token": token, "X-API-Key": client.app.state.local_api_keys["analyst"]})
     assert response.status_code == 201
-    assert client.get("/api/reports").json()[0]["note"] == "Synthetic review"
+    assert client.get("/api/reports").status_code == 401
+    assert client.get("/api/reports", headers={"X-API-Key": client.app.state.local_api_keys["analyst"]}).json()[0]["note"] == "Synthetic review"
 
 
 def test_local_host_and_origin_restrictions(client):

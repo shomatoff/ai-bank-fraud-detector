@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import csv
+import hmac
 import io
 import json
+import os
 import secrets
 import sqlite3
 from datetime import UTC, datetime
@@ -32,6 +34,8 @@ from .training import (
     score,
     train,
 )
+from .training_v2 import artifact_signature, signing_key
+from .v6_reference import V6_SUMMARY
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "web"
@@ -68,20 +72,53 @@ def connect(path: Path) -> sqlite3.Connection:
     return connection
 
 
-def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
+def create_app(artifact_dir: Path = ARTIFACT_DIR, *, auto_train: bool = True) -> FastAPI:
     artifact_dir.mkdir(parents=True, exist_ok=True)
     model_path = artifact_dir / MODEL_PATH.name
     metrics_path = artifact_dir / METRICS_PATH.name
     validation_path = artifact_dir / VALIDATION_PATH.name
-    if (not model_path.exists() or not metrics_path.exists() or not validation_path.exists()
-            or json.loads(metrics_path.read_text()).get("artifact_version") != ARTIFACT_VERSION):
+    artifacts_missing_or_stale = (
+        not model_path.exists() or not metrics_path.exists() or not validation_path.exists()
+        or json.loads(metrics_path.read_text()).get("artifact_version") != ARTIFACT_VERSION
+        if metrics_path.exists()
+        else True
+    )
+    if artifacts_missing_or_stale and not auto_train:
+        raise RuntimeError(
+            "Model artifacts unavailable or stale; run the documented training command first"
+        )
+    if artifacts_missing_or_stale:
         train(output_dir=artifact_dir)
     metrics = json.loads(metrics_path.read_text())
+    metrics["multi_seed_summary"] = V6_SUMMARY
     if file_sha256(model_path) != metrics["model_sha256"]:
         raise RuntimeError("Local model artifact hash mismatch; do not load it")
     if file_sha256(validation_path) != metrics["validation_sha256"]:
         raise RuntimeError("Validation artifact hash mismatch; do not load it")
-    model = joblib.load(model_path)  # Hash is an integrity check, not a signature or trust boundary.
+    if not hmac.compare_digest(
+        artifact_signature(signing_key(artifact_dir), metrics["model_sha256"], metrics["validation_sha256"]),
+        metrics.get("artifact_hmac_sha256", ""),
+    ):
+        raise RuntimeError("Artifact signature mismatch; do not load joblib")
+    model = joblib.load(model_path)  # Local HMAC raises the bar; joblib remains unsafe for untrusted files.
+    api_keys_path = artifact_dir / "local-api-keys.json"
+    if bool(os.environ.get("SENTINELAI_ANALYST_KEY")) != bool(os.environ.get("SENTINELAI_ADMIN_KEY")):
+        raise RuntimeError("Set both SENTINELAI_ANALYST_KEY and SENTINELAI_ADMIN_KEY")
+    if os.environ.get("SENTINELAI_ANALYST_KEY") and os.environ.get("SENTINELAI_ADMIN_KEY"):
+        api_keys = {"analyst": os.environ["SENTINELAI_ANALYST_KEY"],
+                    "admin": os.environ["SENTINELAI_ADMIN_KEY"]}
+    elif api_keys_path.exists():
+        api_keys = json.loads(api_keys_path.read_text())
+        api_keys_path.chmod(0o600)
+    else:
+        api_keys = {"analyst": secrets.token_urlsafe(32), "admin": secrets.token_urlsafe(32)}
+        descriptor = os.open(api_keys_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as key_file:
+            key_file.write(json.dumps(api_keys) + "\n")
+        api_keys_path.chmod(0o600)
+    if (api_keys["analyst"] == api_keys["admin"]
+            or min(len(api_keys["analyst"]), len(api_keys["admin"])) < 20):
+        raise RuntimeError("Use distinct analyst/admin API keys of at least 20 characters")
     with np.load(validation_path, allow_pickle=False) as stored:
         val_scores = stored["scores"].copy()
         val_labels = stored["labels"].copy()
@@ -122,7 +159,8 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
             FOREIGN KEY(report_id) REFERENCES reports(id)
         )""")
     demo = generate_transactions(1000, 2026)
-    app = FastAPI(title="AI Bank Fraud Detector — synthetic local lab", version="2.0.0")
+    app = FastAPI(title="AI Bank Fraud Detector — synthetic local lab", version="v6-local")
+    app.state.local_api_keys = api_keys
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
     csrf_token = secrets.token_urlsafe(32)
 
@@ -150,6 +188,17 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
     def require_csrf(token: str):
         if not secrets.compare_digest(token, csrf_token):
             raise HTTPException(403, "Invalid CSRF token")
+
+    def require_role(key: str, minimum: str = "analyst"):
+        if not key:
+            raise HTTPException(401, "X-API-Key required for local reports")
+        if secrets.compare_digest(key, api_keys["admin"]):
+            return "admin"
+        if secrets.compare_digest(key, api_keys["analyst"]):
+            if minimum == "admin":
+                raise HTTPException(403, "Admin role required")
+            return "analyst"
+        raise HTTPException(401, "Invalid X-API-Key")
 
     @app.get("/", include_in_schema=False)
     def index():
@@ -287,8 +336,10 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
         }
 
     @app.post("/api/reports", status_code=201)
-    def save_report(report: ReportRequest, x_csrf_token: str = Header(default="")):
+    def save_report(report: ReportRequest, x_csrf_token: str = Header(default=""),
+                    x_api_key: str = Header(default="")):
         require_csrf(x_csrf_token)
+        require_role(x_api_key)
         result = risk_score(report.transaction)
         safe_transaction = {key: report.transaction.model_dump()[key] for key in FEATURES}
         now = datetime.now(UTC).isoformat()
@@ -308,7 +359,8 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
         return {"id": report_id, "status": "new", **result}
 
     @app.get("/api/reports")
-    def list_reports():
+    def list_reports(x_api_key: str = Header(default="")):
+        require_role(x_api_key)
         with connect(db_path) as db:
             rows = db.execute(
                 "SELECT id, created_at, probability, level, note, status "
@@ -317,7 +369,8 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
             return [dict(row) for row in rows]
 
     @app.get("/api/reports/export.csv")
-    def export_reports_csv():
+    def export_reports_csv(x_api_key: str = Header(default="")):
+        require_role(x_api_key)
         with connect(db_path) as db:
             rows = db.execute(
                 "SELECT id, created_at, status, probability, level, model_name, threshold, note "
@@ -328,8 +381,7 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
             "Content-Disposition": 'attachment; filename="sentinel-reports.csv"'
         })
 
-    @app.get("/api/reports/{report_id}")
-    def get_report(report_id: int):
+    def load_report(report_id: int):
         with connect(db_path) as db:
             row = db.execute("SELECT * FROM reports WHERE id = ?", (report_id,)).fetchone()
         if row is None:
@@ -340,9 +392,16 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
         result["human_review_required"] = True
         return result
 
+    @app.get("/api/reports/{report_id}")
+    def get_report(report_id: int, x_api_key: str = Header(default="")):
+        require_role(x_api_key)
+        return load_report(report_id)
+
     @app.patch("/api/reports/{report_id}")
-    def update_review(report_id: int, update: ReviewUpdate, x_csrf_token: str = Header(default="")):
+    def update_review(report_id: int, update: ReviewUpdate, x_csrf_token: str = Header(default=""),
+                      x_api_key: str = Header(default="")):
         require_csrf(x_csrf_token)
+        require_role(x_api_key, "admin" if update.status == "confirmed_fraud" else "analyst")
         allowed = {
             "new": {"in_review"},
             "in_review": {"confirmed_fraud", "false_positive"},
@@ -369,11 +428,12 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (report_id, now, action, old, update.status, update.note),
             )
-        return get_report(report_id)
+        return load_report(report_id)
 
     @app.get("/api/reports/{report_id}/audit")
-    def report_audit(report_id: int):
-        get_report(report_id)
+    def report_audit(report_id: int, x_api_key: str = Header(default="")):
+        require_role(x_api_key)
+        load_report(report_id)
         with connect(db_path) as db:
             rows = db.execute(
                 "SELECT id, created_at, action, old_status, new_status, note "
@@ -382,21 +442,24 @@ def create_app(artifact_dir: Path = ARTIFACT_DIR) -> FastAPI:
             return [dict(row) for row in rows]
 
     @app.get("/api/reports/{report_id}/export")
-    def export_report(report_id: int):
-        return JSONResponse(get_report(report_id), headers={
+    def export_report(report_id: int, x_api_key: str = Header(default="")):
+        require_role(x_api_key)
+        return JSONResponse(load_report(report_id), headers={
             "Content-Disposition": f'attachment; filename="sentinel-report-{report_id}.json"'
         })
 
     @app.get("/api/reports/{report_id}/export.html")
-    def export_report_html(report_id: int):
-        return HTMLResponse(report_html(get_report(report_id)), headers={
+    def export_report_html(report_id: int, x_api_key: str = Header(default="")):
+        require_role(x_api_key)
+        return HTMLResponse(report_html(load_report(report_id)), headers={
             "Content-Disposition": f'attachment; filename="sentinel-report-{report_id}.html"',
             "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'",
         })
 
     @app.get("/api/reports/{report_id}/export.pdf")
-    def export_report_pdf(report_id: int):
-        return Response(report_pdf(get_report(report_id)), media_type="application/pdf", headers={
+    def export_report_pdf(report_id: int, x_api_key: str = Header(default="")):
+        require_role(x_api_key)
+        return Response(report_pdf(load_report(report_id)), media_type="application/pdf", headers={
             "Content-Disposition": f'attachment; filename="sentinel-report-{report_id}.pdf"'
         })
 

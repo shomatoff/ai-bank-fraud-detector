@@ -10,32 +10,41 @@ const i18n = {
   }
 };
 Object.assign(i18n.en, {
+  modelAuc:'10-seed mean PR-AUC',heldOutTest:'Synthetic tests · 95% CI in model view',
+  modelBannerDesc:'Primary figures are ten-seed means with 95% seed-bootstrap intervals on synthetic data. The confusion matrix is one labelled seed-42 example, not bank performance.',
+  atThreshold:'Seed 42 example · validation-selected threshold',
   modelName:'Logistic regression classifier',
   fraudProbability:'Synthetic model score',
   reportsPrivacy:'Synthetic features, score, status, note and audit history are stored locally.',
   logisticName:'Logistic regression classifier',
   atThreshold:'Validation-selected alert threshold',
-  method2:'Split development chronologically: 65% fit, 10% calibration, 25% validation; use a later test seed.',
+  method2:'Split development chronologically: 60% fit, 20% calibration, 20% validation; use a later test seed.',
   method3:'Select the model and review threshold on validation; evaluate the selected pipeline on the later test.',
   export:'Export JSON', reviewYes:'Analyst review recommended', reviewNo:'Below review threshold',
 });
 Object.assign(i18n.uz, {
+  modelAuc:'10 seed o‘rtacha PR-AUC',heldOutTest:'Sintetik testlar · 95% interval model sahifasida',
+  modelBannerDesc:'Asosiy raqamlar 10 seed o‘rtachasi va 95% seed-bootstrap intervali. Xatolik matritsasi faqat seed 42 namunasi; bank samaradorligi emas.',
+  atThreshold:'Seed 42 namunasi · validatsiyada tanlangan chegara',
   modelName:'Logistik regressiya klassifikatori',
   fraudProbability:'Sintetik model bahosi',
   reportsPrivacy:'Sintetik belgilar, baho, holat, izoh va audit tarixi lokal saqlanadi.',
   logisticName:'Logistik regressiya klassifikatori',
   atThreshold:'Validatsiyada tanlangan ogohlantirish chegarasi',
-  method2:'Development vaqt bo‘yicha 65% o‘qitish, 10% kalibrlash va 25% validatsiyaga bo‘linadi; keyingi test boshqa seed bilan yaratiladi.',
+  method2:'Development vaqt bo‘yicha 60% o‘qitish, 20% kalibrlash va 20% validatsiyaga bo‘linadi; keyingi test boshqa seed bilan yaratiladi.',
   method3:'Model va chegara validatsiyada tanlanadi; tanlangan pipeline keyingi testda baholanadi.',
   export:'JSON yuklab olish', reviewYes:'Analitik tekshiruvi tavsiya etiladi', reviewNo:'Tekshiruv chegarasidan past',
 });
 Object.assign(i18n.ru, {
+  modelAuc:'Средняя PR-AUC по 10 seed',heldOutTest:'Синтетические тесты · 95% интервал в разделе модели',
+  modelBannerDesc:'Основные цифры — среднее по 10 seed и 95% seed-bootstrap интервал. Матрица ошибок — только пример seed 42, не эффективность в банке.',
+  atThreshold:'Пример seed 42 · порог выбран на валидации',
   modelName:'Классификатор логистической регрессии',
   fraudProbability:'Оценка синтетической модели',
   reportsPrivacy:'Синтетические признаки, оценка, статус, заметка и аудит хранятся локально.',
   logisticName:'Классификатор логистической регрессии',
   atThreshold:'Порог оповещения, выбранный на валидации',
-  method2:'Данные по времени делятся: 65% обучение, 10% калибровка, 25% валидация; поздний тест создаётся с другим seed.',
+  method2:'Данные по времени делятся: 60% обучение, 20% калибровка, 20% валидация; поздний тест создаётся с другим seed.',
   method3:'Модель и порог выбираются на валидации; выбранный конвейер оценивается на позднем тесте.',
   export:'Скачать JSON', reviewYes:'Рекомендуется проверка аналитиком', reviewNo:'Ниже порога проверки',
 });
@@ -74,7 +83,7 @@ function statusBadge(row) { return `<span class="status ${row.is_fraud ? 'fraud'
 function rowHtml(row, full=false) { return `<tr><td>${escapeHtml(row.id)}</td><td>${t(row.merchant_category)}</td><td>${t(row.channel)}</td><td class="amount">${format(row.amount)}</td><td>${String(row.hour).padStart(2,'0')}:00</td>${full ? `<td>${t(row.is_new_device ? 'yes' : 'no')}</td>` : ''}<td>${statusBadge(row)}</td></tr>`; }
 function render() {
   if (overview) {
-    el('metric-total').textContent = format(overview.transactions); el('metric-fraud').textContent = format(overview.flagged); el('metric-rate').textContent = `${(overview.fraud_rate*100).toFixed(1)}%`; el('metric-volume').textContent = format(overview.total_amount); el('metric-auc').textContent = metrics.roc_auc.toFixed(4);
+    el('metric-total').textContent = format(overview.transactions); el('metric-fraud').textContent = format(overview.flagged); el('metric-rate').textContent = `${(overview.fraud_rate*100).toFixed(1)}%`; el('metric-volume').textContent = format(overview.total_amount); el('metric-auc').textContent = metrics.multi_seed_summary.pr_auc.mean.toFixed(4);
     const max = Math.max(...overview.hourly.map(item => item.transactions));
     el('hourly-chart').innerHTML = overview.hourly.map(item => `<div class="chart-bar" style="height:${Math.max(4,item.transactions/max*100)}%" data-tip="${String(item.hour).padStart(2,'0')}:00 · ${item.transactions} / ${item.fraud}"></div>`).join('');
     el('category-chart').innerHTML = overview.categories.map(item => {const pct = item.fraud/item.transactions*100; return `<div class="category-row"><span>${t(item.category)}</span><div class="progress"><span style="width:${pct}%"></span></div><strong>${pct.toFixed(1)}%</strong></div>`;}).join('');
@@ -87,11 +96,25 @@ function render() {
   if (metrics) {
     document.querySelector('[data-i18n="modelName"]').textContent = t(metrics.selected_model.startsWith('logistic') ? 'logisticName' : 'modelName');
     document.querySelector('[data-i18n="atThreshold"]').textContent = `${t('atThreshold')}: ${metrics.threshold.toFixed(4)} · ${Math.round(metrics.review_budget*100)}%`;
-    el('model-metrics').innerHTML = [['prAuc',metrics.pr_auc],['precision',metrics.precision],['recall',metrics.recall],['f1',metrics.f1],['brier',metrics.brier_score],['rows',metrics.test_rows]].map(([key,value]) => `<article class="metric-card"><div class="metric-label">${t(key)}</div><div class="metric-value">${key==='rows'?format(value):value.toFixed(3)}</div></article>`).join('');
+    const summary=metrics.multi_seed_summary;
+    el('model-metrics').innerHTML = [['prAuc',summary.pr_auc],['precision',summary.exact_5pct.precision],['recall',summary.exact_5pct.recall],['f1',summary.exact_5pct.f1]].map(([key,value]) => `<article class="metric-card"><div class="metric-label">${t(key)} · ${key==='prAuc'?'10 seed':'top 5% · 10 seed'}</div><div class="metric-value">${value.mean.toFixed(3)}</div><div class="metric-foot">95% CI ${value.ci95_percentile[0].toFixed(3)}–${value.ci95_percentile[1].toFixed(3)}</div></article>`).join('');
     el('confusion').innerHTML = ['tn','fp','fn','tp'].map(key => `<div class="confusion-cell"><strong>${format(metrics.confusion_matrix[key])}</strong><span>${t(key)}</span></div>`).join('');
   }
 }
-async function loadReports() { try {reports = await api('/api/reports'); render();} catch {el('reports-body').innerHTML = `<tr><td colspan="6">${t('error')}</td></tr>`;} }
+async function loadReports() { try {reports = await api('/api/reports',{headers:{'X-API-Key':window.localApiKey?.()||''}}); render();} catch {el('reports-body').innerHTML = `<tr><td colspan="6">${t('error')}</td></tr>`;} }
+document.addEventListener('click',async event=>{
+  const anchor=event.target.closest('a[href^="/api/reports/"]');
+  if(!anchor)return;
+  event.preventDefault();
+  try{
+    const response=await fetch(anchor.getAttribute('href'),{headers:{'X-API-Key':window.localApiKey?.()||''}});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const name=/filename="([^"]+)"/.exec(response.headers.get('content-disposition')||'')?.[1]||'synthetic-report';
+    const url=URL.createObjectURL(await response.blob());
+    const link=document.createElement('a');link.href=url;link.download=name;link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch{el('save-message').textContent=t('error');}
+});
 async function scoreTransaction(event) {
   event.preventDefault();
   const values = Object.fromEntries(new FormData(event.currentTarget));
@@ -110,7 +133,7 @@ async function scoreTransaction(event) {
 async function saveReport() {
   if (!lastTransaction) return;
   try {
-    await api('/api/reports',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({transaction:lastTransaction,note:el('report-note').value})});
+    await api('/api/reports',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken,'X-API-Key':window.localApiKey?.()||''},body:JSON.stringify({transaction:lastTransaction,note:el('report-note').value})});
     el('save-message').textContent = t('saved');
   } catch { el('save-message').textContent = t('error'); }
 }

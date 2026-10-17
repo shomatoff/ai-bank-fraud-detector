@@ -4,10 +4,13 @@ const uxWords = {
   uz: {reasons:'Modelga asoslangan chiziqli sabablar',reasonNote:'Kalibrlangan log-oddsga aniq hissa; sababiy xulosa emas. Tavsifiy qoidalardan alohida.',rules:'Tavsifiy qoidalar, model atributsiyasi emas',threshold:'Validatsiya chegarasi sinovi',thresholdNote:'Faqat validatsiya bahosi. Slayder amaldagi chegara yoki test natijasini o‘zgartirmaydi.',fp:'Yolg‘on ogohlantirish xarajati',fn:'O‘tkazib yuborish xarajati',budget:'Ko‘rib chiqish limiti',optimize:'Eng arzon chegarani tanlash',alerts:'Ogohlantirishlar',precision:'Aniqlik',recall:'Qamrov',cost:'Taxminiy xarajat',curves:'Sintetik testning PR, ROC va ishonchlilik grafiklari',curveNote:'Ajratilgan testni faqat tasvirlaydi; unda sozlash mumkin emas.',monitor:'Sintetik PSI va guruhlar',monitorNote:'Drift simulyatsiyasi; production monitoring yoki fairness auditi emas.',batch:'Sintetik CSV ni ommaviy baholash',batchNote:'Aniq o‘nta ustun, UTF-8, eng ko‘pi 1 MB va 1 000 satr. Identifikator yo‘q.',scoreCsv:'Baholab CSV yuklash',workflow:'Analitik ish oqimi',workflowNote:'Lokal sintetik hisobot; har bir holat va izoh o‘zgarishi qayd etiladi.',reportId:'Hisobot ID',status:'Holat',note:'Analitik izohi',save:'Tekshiruvni saqlash',audit:'Lokal audit tarixi',allCsv:'Barcha hisobotlar CSV',updated:'Tekshiruv saqlandi',loadError:'Hisobot yuklanmadi',new:'Yangi',in_review:'Tekshiruvda',confirmed_fraud:'Firibgarlik tasdiqlandi',false_positive:'Yolg‘on ogohlantirish',rows:'Satrlar',prevalence:'Firibgarlik ulushi',fpr:'Yolg‘on ijobiy ulushi'},
   ru: {reasons:'Линейные причины по модели',reasonNote:'Точный вклад в калиброванные логарифмические шансы; не причинность. Отдельно от правил.',rules:'Описательные правила, не вклад модели',threshold:'Порог на валидации',thresholdNote:'Только валидационные оценки. Ползунок не меняет рабочий порог или тест.',fp:'Цена ложного срабатывания',fn:'Цена пропуска',budget:'Лимит проверки',optimize:'Выбрать порог минимальных затрат',alerts:'Предупреждения',precision:'Точность',recall:'Полнота',cost:'Оценка затрат',curves:'PR, ROC и надёжность синтетического теста',curveNote:'Описательные графики; на тесте нельзя настраивать модель.',monitor:'Синтетический PSI и сегменты',monitorNote:'Симуляция дрейфа, не production-мониторинг и не аудит справедливости.',batch:'Пакетная оценка синтетического CSV',batchNote:'Точно десять столбцов, UTF-8, максимум 1 МБ и 1 000 строк. Без идентификаторов.',scoreCsv:'Оценить и скачать CSV',workflow:'Работа аналитика',workflowNote:'Локальные синтетические отчёты; все изменения статуса и заметок записываются.',reportId:'ID отчёта',status:'Статус',note:'Примечание аналитика',save:'Сохранить проверку',audit:'Локальный журнал аудита',allCsv:'Все отчёты CSV',updated:'Проверка сохранена',loadError:'Не удалось загрузить отчёт',new:'Новый',in_review:'На проверке',confirmed_fraud:'Мошенничество подтверждено',false_positive:'Ложное срабатывание',rows:'Строки',prevalence:'Доля мошенничества',fpr:'Доля ложноположительных'},
 };
+uxWords.en.reasonNote='Exact selected-model log-odds contributions; calibration may be disabled. Not causal; separate from rules.';
+uxWords.uz.reasonNote='Tanlangan model log-oddsiga aniq hissa; kalibrlash o‘chirilgan bo‘lishi mumkin. Sababiy emas; qoidalardan alohida.';
+uxWords.ru.reasonNote='Точный вклад в логарифмические шансы выбранной модели; калибровка может быть отключена. Не причинность; отдельно от правил.';
 const uxExtra = {
-  en: {thresholdLabel:'Threshold',exportLabel:'Export',slice:'Slice',chooseCsv:'Choose CSV',maxMb:'1 MB max',psi:'PSI validation→test',shift:'1.5× amount simulation',reliability:'Reliability',accountAge:'Account age',under90:'Under 90 days',older90:'90 days or more',night:'Night hour',youngAccount:'Young account',logAmount:'Log amount'},
-  uz: {thresholdLabel:'Chegara',exportLabel:'Eksport',slice:'Guruh',chooseCsv:'CSV tanlang',maxMb:'Eng ko‘pi 1 MB',psi:'PSI validatsiya→test',shift:'Summani 1.5× oshirish simulyatsiyasi',reliability:'Ishonchlilik',accountAge:'Hisob yoshi',under90:'90 kundan kam',older90:'90 kun yoki ko‘p',night:'Tungi soat',youngAccount:'Yangi hisob',logAmount:'Summaning log qiymati'},
-  ru: {thresholdLabel:'Порог',exportLabel:'Экспорт',slice:'Сегмент',chooseCsv:'Выберите CSV',maxMb:'Не более 1 МБ',psi:'PSI валидация→тест',shift:'Симуляция суммы ×1.5',reliability:'Надёжность',accountAge:'Возраст счёта',under90:'Менее 90 дней',older90:'90 дней и более',night:'Ночной час',youngAccount:'Новый счёт',logAmount:'Логарифм суммы'},
+  en: {thresholdLabel:'Threshold',exportLabel:'Export',slice:'Slice',chooseCsv:'Choose CSV',maxMb:'1 MB max',psi:'PSI validation→test',shift:'1.5× amount simulation',reliability:'Reliability',accountAge:'Account age',under90:'Under 90 days',older90:'90 days or more',night:'Night hour',youngAccount:'Young account',logAmount:'Log amount',apiKey:'Local analyst/admin API key',notEvaluable:'Not evaluable (<30 positives)'},
+  uz: {thresholdLabel:'Chegara',exportLabel:'Eksport',slice:'Guruh',chooseCsv:'CSV tanlang',maxMb:'Eng ko‘pi 1 MB',psi:'PSI validatsiya→test',shift:'Summani 1.5× oshirish simulyatsiyasi',reliability:'Ishonchlilik',accountAge:'Hisob yoshi',under90:'90 kundan kam',older90:'90 kun yoki ko‘p',night:'Tungi soat',youngAccount:'Yangi hisob',logAmount:'Summaning log qiymati',apiKey:'Lokal analitik/admin API kaliti',notEvaluable:'Baholab bo‘lmaydi (<30 ijobiy)'},
+  ru: {thresholdLabel:'Порог',exportLabel:'Экспорт',slice:'Сегмент',chooseCsv:'Выберите CSV',maxMb:'Не более 1 МБ',psi:'PSI валидация→тест',shift:'Симуляция суммы ×1.5',reliability:'Надёжность',accountAge:'Возраст счёта',under90:'Менее 90 дней',older90:'90 дней и более',night:'Ночной час',youngAccount:'Новый счёт',logAmount:'Логарифм суммы',apiKey:'Локальный API-ключ аналитика/администратора',notEvaluable:'Нельзя оценить (<30 положительных)'},
 };
 const ux = key => {const lang=document.querySelector('#language').value;return (uxWords[lang]||uxWords.uz)[key]||(uxExtra[lang]||uxExtra.uz)[key]||key;};
 const uxid = id => document.getElementById(id);
@@ -47,6 +50,10 @@ uxid('page-model').append(panel('threshold','thresholdNote','<div class="upgrade
 uxid('page-model').append(panel('curves','curveNote','<div id="ux-curves" class="upgrade-curves"></div>'));
 uxid('page-model').append(panel('monitor','monitorNote','<div id="ux-monitor"></div>'));
 uxid('page-reports').append(panel('workflow','workflowNote','<div class="upgrade-controls"><label><span data-ux="reportId"></span><input id="ux-report-id" type="number" min="1"></label><label><span data-ux="status"></span><select id="ux-status"></select></label><label><span data-ux="note"></span><input id="ux-note" maxlength="300"></label><button id="ux-save" class="secondary" data-ux="save"></button></div><p id="ux-review-message" class="upgrade-help" role="status"></p><p class="upgrade-help"><span data-ux="exportLabel"></span>: <a id="ux-json" href="#">JSON</a> · <a id="ux-html" href="#">HTML</a> · <a id="ux-pdf" href="#">PDF</a> · <a href="/api/reports/export.csv" data-ux="allCsv"></a></p><h3 data-ux="audit"></h3><div id="ux-audit" class="upgrade-audit"></div>'));
+uxid('page-analyzer').append(panel('apiKey','workflowNote','<label><span data-ux="apiKey"></span><input id="ux-api-key" type="password" autocomplete="off"></label>'));
+uxid('ux-api-key').value=sessionStorage.getItem('sentinelai-api-key')||'';
+uxid('ux-api-key').addEventListener('input',event=>sessionStorage.setItem('sentinelai-api-key',event.target.value));
+window.localApiKey=()=>sessionStorage.getItem('sentinelai-api-key')||'';
 
 function renderReasons() {
   if (!uxReason) return;
@@ -120,7 +127,7 @@ function renderDiagnostics() {
   for(const [dimension,entries] of Object.entries(uxMetrics.monitoring.slices))
     for(const [value,item] of Object.entries(entries)){
       const row=document.createElement('tr');
-      [sliceName(dimension,value),item.rows,pct(item.fraud_prevalence),pct(item.precision),pct(item.recall),pct(item.fpr)].forEach(v=>{const cell=document.createElement('td');cell.textContent=String(v);row.append(cell);});
+      [sliceName(dimension,value),item.rows,pct(item.fraud_prevalence),pct(item.precision),item.recall===null?ux('notEvaluable'):pct(item.recall),pct(item.fpr)].forEach(v=>{const cell=document.createElement('td');cell.textContent=String(v);row.append(cell);});
       table.append(row);
     }
   monitor.append(table);
@@ -141,14 +148,15 @@ async function loadReport(){
   const id=Number(uxid('ux-report-id').value);
   if(!Number.isInteger(id)||id<1)return;
   try{
-    const [report,audit]=await Promise.all([fetch('/api/reports/'+id).then(r=>{if(!r.ok)throw new Error();return r.json();}),fetch('/api/reports/'+id+'/audit').then(r=>{if(!r.ok)throw new Error();return r.json();})]);
+    const options={headers:{'X-API-Key':window.localApiKey()}};
+    const [report,audit]=await Promise.all([fetch('/api/reports/'+id,options).then(r=>{if(!r.ok)throw new Error();return r.json();}),fetch('/api/reports/'+id+'/audit',options).then(r=>{if(!r.ok)throw new Error();return r.json();})]);
     uxReport=report;uxAudit=audit;renderReport();
   }catch{uxid('ux-review-message').textContent=ux('loadError');}
 }
 uxid('ux-report-id').addEventListener('change',loadReport);
 uxid('ux-save').addEventListener('click',async()=>{
   if(!uxReport)return;
-  const response=await fetch('/api/reports/'+uxReport.id,{method:'PATCH',headers:{'Content-Type':'application/json','X-CSRF-Token':uxToken},body:JSON.stringify({status:uxid('ux-status').value,note:uxid('ux-note').value})});
+  const response=await fetch('/api/reports/'+uxReport.id,{method:'PATCH',headers:{'Content-Type':'application/json','X-CSRF-Token':uxToken,'X-API-Key':window.localApiKey()},body:JSON.stringify({status:uxid('ux-status').value,note:uxid('ux-note').value})});
   if(!response.ok){uxid('ux-review-message').textContent='HTTP '+response.status;return;}
   uxid('ux-review-message').textContent=ux('updated');await loadReport();
 });
@@ -166,7 +174,7 @@ uxid('ux-batch-go').addEventListener('click',async()=>{
   }catch(error){uxid('ux-batch-message').textContent=String(error);}
 });
 new MutationObserver(()=>{
-  if(uxid('page-reports').classList.contains('active'))fetch('/api/reports').then(r=>r.json()).then(rows=>{
+  if(uxid('page-reports').classList.contains('active'))fetch('/api/reports',{headers:{'X-API-Key':window.localApiKey()}}).then(r=>{if(!r.ok)throw new Error();return r.json();}).then(rows=>{
     if(rows.length&&!uxid('ux-report-id').value){uxid('ux-report-id').value=rows[0].id;loadReport();}
   }).catch(()=>{});
 }).observe(uxid('page-reports'),{attributes:true,attributeFilter:['class']});

@@ -51,7 +51,7 @@ def rank_metrics(labels: np.ndarray, scores: np.ndarray, probability: bool = Tru
 
 
 def exact_top_k_metrics(labels: np.ndarray, scores: np.ndarray, budget: float) -> dict:
-    """Retrospective fixed-volume ranking; uses test scores, never test labels to rank."""
+    """Fixed-volume ranking; labels evaluate precision, never choose ranked rows."""
     labels = np.asarray(labels, dtype=int)
     scores = np.asarray(scores, dtype=float)
     k = round(len(scores) * budget)
@@ -68,10 +68,10 @@ def exact_top_k_metrics(labels: np.ndarray, scores: np.ndarray, budget: float) -
         "f1": float(2 * precision * recall / (precision + recall)) if precision + recall else 0.0,
         "fpr": float(fpr),
         "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
-        "policy": "retrospective top-k test scores; labels not used for ranking",
+        "policy": "batch top-k scores; labels used for evaluation, not ranking",
     }
 def rule_score(frame) -> np.ndarray:
-    """A frozen, inspectable baseline: no labels or learned parameters."""
+    """Frozen hand rule; authored with generator knowledge, not independent."""
     return (
         2.0 * frame.is_new_device.astype(float)
         + 1.5 * (frame.velocity_1h >= 3).astype(float)
@@ -84,7 +84,11 @@ def rule_score(frame) -> np.ndarray:
     ).to_numpy(dtype=float)
 
 
-def compare_baselines(y_val, y_test, val_frame, test_frame, val_ml, test_ml) -> dict:
+ALERT_BUDGETS = (0.005, 0.01, 0.05, 0.10)
+
+
+def compare_baselines(y_val, y_test, val_frame, test_frame, val_ml, test_ml,
+                      val_tree=None, test_tree=None) -> dict:
     y_val = np.asarray(y_val, dtype=int)
     y_test = np.asarray(y_test, dtype=int)
     scores = {
@@ -92,14 +96,16 @@ def compare_baselines(y_val, y_test, val_frame, test_frame, val_ml, test_ml) -> 
         "fixed_rules": (rule_score(val_frame), rule_score(test_frame)),
         "ml_calibrated": (np.asarray(val_ml), np.asarray(test_ml)),
     }
+    if val_tree is not None and test_tree is not None:
+        scores["depth3_tree"] = (np.asarray(val_tree), np.asarray(test_tree))
     comparison = {}
     for name, (validation_scores, test_scores) in scores.items():
         comparison[name] = {
-            "ranking": rank_metrics(y_test, test_scores, probability=name != "fixed_rules"),
+            "ranking": rank_metrics(y_test, test_scores, probability=name not in {"fixed_rules", "always_normal"}),
             "budgets": {},
             "exact_test_top_k": {},
         }
-        for budget in (0.05, 0.10):
+        for budget in ALERT_BUDGETS:
             # Validation-derived threshold: deployable policy, but actual test
             # alert rate may differ from the configured capacity.
             threshold = float("inf") if name == "always_normal" else choose_threshold(validation_scores, budget)
@@ -114,6 +120,20 @@ def compare_baselines(y_val, y_test, val_frame, test_frame, val_ml, test_ml) -> 
                 else exact_top_k_metrics(y_test, test_scores, budget)
             )
     return comparison
+
+
+def expected_calibration_error(labels, scores, bins: int = 10) -> float:
+    """Equal-width ECE; descriptive and sensitive to bin choice."""
+    labels = np.asarray(labels, dtype=int)
+    scores = np.asarray(scores, dtype=float)
+    if len(labels) != len(scores) or not len(labels):
+        raise ValueError("labels and scores must have matching nonzero lengths")
+    groups = np.minimum((scores * bins).astype(int), bins - 1)
+    return float(sum(
+        np.sum(groups == index) / len(scores)
+        * abs(labels[groups == index].mean() - scores[groups == index].mean())
+        for index in range(bins) if np.any(groups == index)
+    ))
 def select_cost_threshold(labels, scores, fp_cost: float, fn_cost: float, max_alert_rate: float = .10) -> dict:
     """Minimize a user-supplied linear cost on validation only, under capacity."""
     if fp_cost < 0 or fn_cost < 0:
@@ -197,10 +217,14 @@ def monitoring_summary(validation_frame, test_frame, labels, scores, threshold) 
             if mask.sum() < 20:
                 continue
             row = threshold_metrics(np.asarray(labels)[mask], np.asarray(scores)[mask], threshold)
+            positives = int(np.asarray(labels)[mask].sum())
             slices[dimension][str(value)] = {
                 "rows": int(mask.sum()),
+                "positives": positives,
                 "fraud_prevalence": float(np.asarray(labels)[mask].mean()),
                 **row,
+                "recall": row["recall"] if positives >= 30 else None,
+                "recall_status": "evaluable" if positives >= 30 else "not evaluable (<30 positives)",
             }
     return {"drift": drift, "slices": slices,
             "limitations": "Synthetic simulation and small subgroup samples; no fairness or production drift claim."}

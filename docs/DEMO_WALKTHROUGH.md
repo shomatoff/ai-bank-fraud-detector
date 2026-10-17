@@ -36,7 +36,7 @@ Only synthetic data is used. Python 3.12 is verified; Node.js/Chrome are optiona
 
 5. Open **Risk analyzer**. Enter synthetic example values: amount `2400`, hour `14`, category `groceries`, channel `card_present`, country risk `0`, new device `Yes`, transactions in one hour `6`, distance `12`, account age `800`, prior declines `2`. Select **Calculate risk**. Inspect the score, model-based linear reasons, and separate descriptive rules. Neither is causal.
 
-6. Enter `Synthetic review only` and select **Save local report**. In **Reports**, load its ID, move `new → in_review → confirmed_fraud` or `false_positive`, inspect the local audit history, and export JSON, HTML, PDF or report-list CSV. This is annotation only; no bank action occurs.
+6. On first v6-local launch, the app creates two random keys in ignored, owner-only `data/local-api-keys.json`. Read the `analyst` key **only on your own computer** and enter it in the password-style API-key field on **Risk analyzer** *before opening Reports*. Enter `Synthetic review only` and select **Save local report**. In **Reports**, load its ID; an analyst can move `new → in_review → false_positive`. Setting `confirmed_fraud` requires the separate `admin` key in the same input. Inspect the local audit and export JSON, HTML, PDF or report-list CSV. **All** report reads/exports require the API key; writes additionally require CSRF. The key is held in browser session storage for this local demo; clear the session when done. Never use private notes or expose the service. This is annotation only; no bank action occurs.
 
 7. Optional API smoke checks in another terminal:
 
@@ -46,7 +46,7 @@ Only synthetic data is used. Python 3.12 is verified; Node.js/Chrome are optiona
    curl -fsS 'http://127.0.0.1:8000/api/transactions?limit=5'
    ```
 
-   `GET /api/reports/{id}` returns a saved report's detail, and `GET /api/reports/{id}/export` downloads its JSON. The browser handles the per-process CSRF token for report creation.
+   `GET /api/reports/{id}` returns a saved report's detail, and `GET /api/reports/{id}/export` downloads its JSON. The browser handles the per-process CSRF token; local report writes also need the analyst/admin key. For a full live synthetic API check, run `.venv/bin/python -m scripts.live_smoke --base http://127.0.0.1:8000`.
 
 8. Verify the project and recapture real browser screenshots while the server is running:
 

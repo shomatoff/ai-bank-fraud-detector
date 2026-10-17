@@ -1,32 +1,20 @@
-# SentinelAI — O‘zbekcha qo‘llanma
+# SentinelAI — v6 lokal qo‘llanma
 
-Bu **faqat sintetik ma’lumotli lokal** firibgarlik monitoring laboratoriyasi. Dashboard FastAPI taqdim etadigan HTML/CSS/JavaScript; Streamlit emas. Haqiqiy bank yozuvi, mijoz ma’lumoti, jonli to‘lov API va avtomatik bloklash yo‘q. [English](../README.md) · [Русский](README_RU.md).
+Bu faqat **sintetik tranzaksiyalar** bilan ishlaydigan FastAPI + HTML/JavaScript tahlil laboratoriyasi; Streamlit, haqiqiy bank integratsiyasi va avtomatik karta/to‘lov bloklashi yo‘q. V6 hali GitHub’ga yuborilmagan. Eski natijalar [arxivda](archive/README_UZ_V2_V5.md).
 
-## Linuxda ishga tushirish
+**Asosiy natija (10 seed, yangi test seedlari 400045–400054):** aynan 5% alert hajmida precision **.8313 [.8147,.8487]**, recall **.6689 [.6566,.6799]**; PR-AUC **.7455 [.7219,.7656]**. Qavslar 95% seed-bootstrap intervali, haqiqiy bank ishonch oralig‘i emas. Qoida/ML juft farqi: precision **+.2387 [.2233,.2520]**, recall **+.1923 [.1786,.2045]**. Ko‘rilmagan `card_testing` tipologiyasida recall **.0127 [.0025,.0254]** — jiddiy cheklov. [To‘liq baholash](MODEL_EVALUATION.md), [imkoniyatlar](FRAUD_DETECTION_CAPABILITIES.md), [data card](DATA_CARD.md), [benchmark holati](BENCHMARK.md).
 
-Tekshirilgan versiya Python 3.12. [GitHub repository](https://github.com/shomatoff/ai-bank-fraud-detector) ZIP faylini yuklab oching yoki quyidagicha clone qiling:
+Ubuntu/Python 3.12 da loyiha papkasidan:
 
 ```bash
-git clone https://github.com/shomatoff/ai-bank-fraud-detector.git
-cd ai-bank-fraud-detector
 python3 -m venv .venv
-.venv/bin/python -m pip install -c constraints-verified.txt --upgrade pip
 .venv/bin/python -m pip install -c constraints-verified.txt -r requirements-dev.txt
 .venv/bin/python -m scripts.generate_data --rows 12000 --seed 42
 .venv/bin/python -m fraud_detector.model
-.venv/bin/python -m pytest -q
-.venv/bin/ruff check fraud_detector tests scripts
+.venv/bin/python -m scripts.v6_evaluation --seeds 10 --rows 12000
 .venv/bin/uvicorn fraud_detector.api:app --host 127.0.0.1 --port 8000
 ```
 
-Terminal ochiq turganda `http://127.0.0.1:8000/` ni **o‘z kompyuteringizda** oching. 8000 band bo‘lsa `--port 8001` va mos havolani ishlating. Server to‘xtagan bo‘lsa 127.0.0.1 havolasi ochilmaydi. Dockerfile va Makefile mavjud; Docker ishga tushishi ushbu hisobotda alohida tekshirilmagan. To‘liq amaliy jarayon [demo](DEMO_WALKTHROUGH.md)da.
+Server ishlayotgan paytda **o‘z kompyuteringizda** `http://127.0.0.1:8000/` ni oching. Analitik hisobotlarini o‘qish, yozish va eksport qilish uchun lokal `data/local-api-keys.json`dagi analyst kalitini UI’ning password maydoniga kiriting; kalitni hech kimga yubormang. Tasdiqlangan firibgarlik holati uchun admin kaliti kerak. Yozishda `/api/config`dan CSRF token ham talab qilinadi. HMAC kaliti `data/`dan tashqaridagi owner-only faylda (`~/.local/share/sentinelai/artifact-signing.key`) yoki `SENTINELAI_HMAC_KEY_FILE` yo‘lida turadi; bu bank darajasidagi trust root emas. JSON/HTML/PDF/CSV hisobotlar faqat sintetik ma’lumot uchun. [Demo yurishi](DEMO_WALKTHROUGH.md), [lokal integratsiya](LOCAL_INTEGRATION.md), [roadmap](BANKING_INTEGRATION_ROADMAP.md).
 
-## Nima ishlaydi va nimaga ishonmaslik kerak
-
-Yuklab olish va lokal API orqali ulash namunasi: [integratsiya qo‘llanmasi](LOCAL_INTEGRATION.md).
-
-To‘rtta firibgarlikka o‘xshash ssenariy, ikki qonuniy murakkab holat va normal voqealardan sintetik vaqt oqimi yaratiladi. `velocity_1h` va `prior_declines_24h` faqat oldingi voqealardan hisoblanadi. Vaqt bo‘yicha o‘qitish/kalibrlash/validatsiya va yangi urug‘li test ajratiladi. Logistik model, Platt kalibrlash, besh chiziqli model hissasi va alohida tavsifiy signallar, qoidaviy baseline, PR/ROC/ishonchlilik grafiklari, PSI va guruhlar tahlili mavjud. CSV partiyasini baholash, SQLite’dagi `new → in_review → confirmed_fraud/false_positive` jarayoni, audit hamda JSON/HTML/PDF/CSV eksport ishlaydi. Faqat inson ko‘rigi tavsiya qilinadi.
-
-Yakuniy **sintetik** testda 3 000 voqeadan 176 tasi yorliqda firibgarlik: precision .707627, recall .948864, F1 .810680, PR-AUC .893556, ROC AUC .977438; TN2755 FP69 FN9 TP167. Chegara .08581994158148241 faqat validatsiyada tanlangan. Kalibrlash test Brier xatosini yaxshilamadi (.012016 → .012800). Card-present guruhida 4/4 fraud o‘tkazib yuborilgan. Bu raqamlar real bank samaradorligini **isbotlamaydi**. Eski v3 raqamlari bilan farq asosan generator o‘zgargan sharoitda olingan, algoritmning nazoratli yutug‘i emas.
-
-To‘liq imkoniyat holati (TESTED / IMPLEMENTED / PARTIAL / NOT IMPLEMENTED) [asosiy README jadvali](../README.md#feature-status)da. [Imkoniyat va cheklovlar auditi](FRAUD_DETECTION_CAPABILITIES.md) · [haqiqiy baholash va baseline](MODEL_EVALUATION.md) · [yorliq formulasi, qadam-baqadam](SYNTHETIC_FRAUD_LABEL_FORMULA_UZ.md) · [ssenariy parametrlari](SYNTHETIC_SCENARIOS.md) · [model kartasi](MODEL_CARD.md) · [ma’lumot kartasi](DATA_CARD.md) · [bank integratsiyasi chegaralari](BANKING_INTEGRATION_ROADMAP.md) · [demo](DEMO_WALKTHROUGH.md) · [to‘liq ish hisoboti](../IMPLEMENTATION_REPORT_UZ.md) · [haqiqiy skrinshotlar](../screenshots/README.md).
+Tekshiruv: `.venv/bin/python -m pytest -v`, `.venv/bin/ruff check fraud_detector tests scripts`, `.venv/bin/pip-audit`; ishlayotgan serverga `.venv/bin/python -m scripts.live_smoke --base http://127.0.0.1:8000`. Docker bu mahalliy muhitda yo‘q, GitHub CI’dagi yangi build vazifasi hali ishga tushirilmagan. Public CSV yo‘q: **public benchmark NOT RUN**. Rekonstruksiya qilingan prompt fayli topilmadi: [gap holati](MASTER_PROMPT_GAP_ANALYSIS.md). [O‘zbek hujjatli tarix](PROJECT_DOCUMENTARY_UZ.md) · [English documentary](PROJECT_DOCUMENTARY_EN.md).

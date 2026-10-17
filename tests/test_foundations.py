@@ -71,16 +71,19 @@ def test_report_migration_details_and_json_export(tmp_path):
     payload = {"transaction": transaction, "note": "Synthetic investigation"}
     assert client.post("/api/reports", json=payload).status_code == 403
     token = client.get("/api/config").json()["csrf_token"]
-    created = client.post("/api/reports", json=payload, headers={"X-CSRF-Token": token})
+    created = client.post("/api/reports", json=payload, headers={
+        "X-CSRF-Token": token, "X-API-Key": client.app.state.local_api_keys["analyst"]})
     assert created.status_code == 201
     report_id = created.json()["id"]
-    detail = client.get(f"/api/reports/{report_id}").json()
+    key_header = {"X-API-Key": client.app.state.local_api_keys["analyst"]}
+    assert client.get(f"/api/reports/{report_id}").status_code == 401
+    detail = client.get(f"/api/reports/{report_id}", headers=key_header).json()
     assert detail["transaction"] == transaction
     assert detail["model_name"] in {"logistic_regression", "logistic_regularized"}
     assert detail["data_source"] == "synthetic"
     assert "card_number" not in json.dumps(detail)
-    exported = client.get(f"/api/reports/{report_id}/export")
+    exported = client.get(f"/api/reports/{report_id}/export", headers=key_header)
     assert exported.status_code == 200
     assert exported.json() == detail
     assert "attachment;" in exported.headers["content-disposition"]
-    assert client.get("/api/reports/999999/export").status_code == 404
+    assert client.get("/api/reports/999999/export", headers=key_header).status_code == 404

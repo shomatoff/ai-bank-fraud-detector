@@ -1,0 +1,15 @@
+# Data card — generated customer event stream
+
+## Current v5-local update
+
+No real data are used in the FastAPI app. The new synthetic test uses seed **300045**, not historical 200045. The four fraud-like scenarios now label positive with probability `.88` rather than `.94`; normal noise is `.01` rather than `.005`; new `legit_many_declines` (2.5% planned share, five-event episodes, `.02` positive rate) makes prior-decline signals ambiguous. Legitimate travel and large purchase remain `.01`. Development is chronologically divided 60% fit / 20% calibration / 20% validation (7,200/2,400/2,400 rows); later test has 3,000 rows and 189 positives. Exact scenario values: [scenario specification](SYNTHETIC_SCENARIOS.md), [formula](SYNTHETIC_FRAUD_LABEL_FORMULA_EN.md), [evaluation](MODEL_EVALUATION.md#v5-local-rigor-audit-2026-10-15). Public ULB data are supported only by an isolated, opt-in loader; none are bundled or used by the app. [Benchmark status](BENCHMARK.md).
+
+## Historical v4 card (below)
+
+All rows are generated locally with NumPy; there is **no real bank, customer, credential, payment or device data**. Default development: 12,000 rows (`seed=42`, January 2026 simulation), followed by a separate 3,000-row March synthetic test (`seed=200045`). The test seed was fixed before this version's final evaluation. Times, customer identifiers, countries and amounts are artificial. The downloadable CSV intentionally contains only ten scoring features plus `is_fraud`.
+
+The private generator table additionally contains synthetic grouping/time/scenario/decline metadata for temporal splitting and past-only rolling features. No such metadata is passed to the model. Positive labels use scenario-dependent Bernoulli draws, including 6% negative noise inside fraud typologies and low positive noise in normal/edge cases. [Scenario parameters](SYNTHETIC_SCENARIOS.md) and [three-language formula explanation](SYNTHETIC_FRAUD_LABEL_FORMULA_EN.md) document exact generation.
+
+Default development split is chronological: first 65% fit, next 10% calibrate, last 25% validate. Independent test starts after development, with a new seed. The observed fraud rates are 7.2564% / 4.1667% / 3.8667% / 5.8667% respectively. These shifts arise from simulator design, not a natural population. No demographic attributes or sensitive-class labels are present; `country_risk` is an artificial level and **must not** be interpreted as a real nationality or fairness assessment.
+
+Known gaps: no seasonality, genuine multi-account social graph, delayed chargeback labels, real decline semantics, missing/late events, currency, device fingerprint, customer consent, regulatory basis, production drift, or external validity. The new-account scenario is concentrated early in each stream, creating temporal imbalance. Generated data are suitable only for software demonstrations and controlled educational tests. See [evaluation](MODEL_EVALUATION.md) and [integration boundaries](BANKING_INTEGRATION_ROADMAP.md).

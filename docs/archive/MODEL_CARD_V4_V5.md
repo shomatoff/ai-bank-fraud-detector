@@ -1,0 +1,17 @@
+# Model card — local synthetic logistic risk model
+
+## Current v5-local update
+
+Version 5 is **local and unpublished**. The active model still uses logistic regression; the development split is 60/20/20 fit/calibration/validation, with new test seed 300045. Platt is attempted but **disabled** for the current run because validation Brier `.017899→.018520` and ECE `.014630→.018282` worsened. Explanations therefore reconstruct raw logistic log-odds; the underlying linear terms are not causal. At the validation-selected threshold `.18489421127174294`, the new 3,000-row synthetic test has 189 positives, TP164 FP90 FN25 TN2721, precision `.645669`, recall `.867725`, PR-AUC `.796689`. Exact top-k budgets and ten-seed intervals are in [v5 evaluation](MODEL_EVALUATION.md#v5-local-rigor-audit-2026-10-15). Card-present TP0/14 is marked **not evaluable (<30 positives)**, and an unseen card-testing type yielded TP0/FN41. HMAC plus SHA256 protects local artifact integrity only when its local key is not also compromised; `joblib` loading remains unsafe for untrusted files. Public benchmark numbers were **not obtained**; [fixture-only benchmark](BENCHMARK.md).
+
+## Historical v4 card (below)
+
+Version 4, 2026-10-15. Intended use: educational fraud-monitoring demonstration and human review of **synthetic** transactions. Out of scope: real banking decisions, card/payment blocking, real fraud diagnosis, customer profiling, cyber vulnerability scanning, and security certification.
+
+The model is a scikit-learn logistic regression selected between predeclared `C=1.0` and `C=0.25` candidates by validation PR-AUC. Categorical inputs are one-hot encoded; numeric/derived inputs are standardized using fit data only. A disjoint calibration slice fits a one-dimensional Platt sigmoid on base-model logits; for a tiny single-class calibration slice the code explicitly falls back to uncalibrated identity. A cost/capacity-constrained threshold is selected on validation only. The current full run selected `C=1.0` and threshold `0.08581994158148241`; see [executed metrics](MODEL_EVALUATION.md).
+
+Inputs are the 10 public [features](FRAUD_DETECTION_CAPABILITIES.md). Derived `night`, `young_account`, and `log_amount` are transparent functions. Outputs are a synthetic score, human-review recommendation, five exact additive model terms on **calibrated log-odds**, and separate hand-written signals. Neither score nor explanation is causal or calibrated to any bank.
+
+The final untouched synthetic test has 3,000 rows and 176 fraud labels: precision .707627, recall .948864, F1 .810680, ROC AUC .977438, PR AUC .893556 at the validation-selected default threshold. The model misses 9 synthetic fraud labels and causes 69 false alerts. Disjoint Platt calibration actually worsened Brier from .012016 to .012800 on this test; it is not presented as an improvement. Card-present slice recall is 0/4; small subgroup counts make aggregate quality misleading. Source and exact full metrics: [evaluation](MODEL_EVALUATION.md) and generated local `data/metrics.json`.
+
+Major risks: easy generator-specific patterns, changed fraud prevalence across time slices, false positives/negatives, poor robustness to unseen schemes, small subgroup samples, model/data coupling, and no real-world validation. The model must not be deployed as a bank control without governed data, shadow evaluation, privacy/security review, human oversight, drift/fairness studies, and independent external testing. See [roadmap](BANKING_INTEGRATION_ROADMAP.md).

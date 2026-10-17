@@ -15,7 +15,21 @@ jobs:
       - run: python -m pip install -c constraints-verified.txt --upgrade pip
       - run: python -m pip install -c constraints-verified.txt -r requirements-dev.txt
       - run: python -m ruff check fraud_detector tests scripts
-      - run: python -m pytest -q
+      - run: python -m pytest -v
       - run: python -m pip_audit
       - run: python -m fraud_detector.model
       - run: python -c "import json; from pathlib import Path; m=json.loads(Path('data/metrics.json').read_text()); assert m['test_rows'] == 3000; assert sum(m['confusion_matrix'].values()) == 3000"
+      - run: python -m scripts.v6_evaluation --seeds 3 --rows 12000 --output data/v6_ci_smoke.json
+  docker-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t sentinelai-v6-ci .
+      - run: docker run -d --name sentinelai-v6-ci -p 127.0.0.1:8000:8000 sentinelai-v6-ci
+      - run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/api/health; then exit 0; fi
+            sleep 2
+          done
+          docker logs sentinelai-v6-ci
+          exit 1

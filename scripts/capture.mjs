@@ -1,6 +1,6 @@
 // Capture real pages from a running local server via Chrome DevTools Protocol.
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -43,6 +43,9 @@ try {
   await capture('02-risk-analyzer-uz.png');
   await evalJs("document.querySelector('#ux-reasons').scrollIntoView()");
   await capture('08-model-reasons-uz.png');
+  const analystKey = process.env.SENTINELAI_ANALYST_KEY || JSON.parse(await readFile(resolve('data/local-api-keys.json'), 'utf8')).analyst;
+  await evalJs(`document.querySelector('#ux-api-key').value=${JSON.stringify(analystKey)};document.querySelector('#ux-api-key').dispatchEvent(new Event('input'))`);
+  await assertJs("document.querySelector('#ux-api-key').type==='password' && window.localApiKey().length>20", 'Local analyst key input failed');
   await evalJs("document.querySelector('#save-report').click()");
   await pause(450);
   await assertJs("document.querySelector('#save-message').textContent.length > 0", 'Report save status is missing');
@@ -60,6 +63,7 @@ try {
   await pause(450);
   await assertJs("document.querySelectorAll('#ux-audit p').length >= 3", 'Note-only audit entry was not saved');
   await capture('07-analyst-workflow-uz.png');
+  await capture('09-v5-keyed-workflow-uz.png');
   await evalJs("document.querySelector('#language').value='ru';document.querySelector('#language').dispatchEvent(new Event('change'));document.querySelector('[data-page=\"model\"]').click()");
   await pause(350);
   await assertJs("document.documentElement.lang==='ru' && document.querySelector('#model-metrics').children.length > 0", 'Russian model page did not render');
@@ -71,7 +75,7 @@ try {
   await pause(350);
   await assertJs("document.documentElement.lang==='en' && document.querySelector('#transactions-body').children.length > 0", 'English transaction page did not render');
   await capture('04-transactions-en.png');
-  console.log('Verified live pages, explanations, status/note audit and captured 8 screenshots');
+  console.log('Verified live pages, explanations, keyed status/note audit and captured 9 screenshots');
 } finally {
   ws?.close(); chrome.kill(); if (chrome.exitCode === null && chrome.signalCode === null) await new Promise(resolve => chrome.once("exit", resolve)); await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:100});
 }

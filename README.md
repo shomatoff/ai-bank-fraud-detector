@@ -1,5 +1,9 @@
 # SentinelAI — AI Bank Fraud Detector
 
+**Current status (2026-10-18):** The GitHub repository is **private**; cloning requires access. The active local model remains v6. An interaction-based challenger improved ordinary synthetic ranking but failed a separate unseen-fraud-type promotion gate and was **not deployed**. See the [full Uzbek experiment and failure report](docs/AI_CHALLENGER_EVALUATION_UZ.md) and [training roadmap](docs/AI_TRAINING_ROADMAP_UZ.md). Neither model has been validated on real bank data.
+
+**v6 synthetic audit (no new release):** The primary result is the mean of **10 new synthetic test seeds (400045–400054)**. At exact 5% alert volume, logistic ML precision is **.8313 [.8147,.8487]**, recall **.6689 [.6566,.6799]**, and PR-AUC **.7455 [.7219,.7656]** (95% seed-bootstrap intervals). Paired ML-minus-rule differences are precision **+.2387 [.2233,.2520]** and recall **+.1923 [.1786,.2045]**. The previously unseen `card_testing` type remains badly detected: recall **.0127 [.0025,.0254]** in a dedicated synthetic test. These numbers do **not** establish real-bank performance. [Current evaluation](docs/MODEL_EVALUATION.md) · [benchmark status](docs/BENCHMARK.md) · [Uzbek documentary](docs/PROJECT_DOCUMENTARY_UZ.md) · [English documentary](docs/PROJECT_DOCUMENTARY_EN.md). Historical v2/v5 measurements are [archived](docs/archive/MODEL_EVALUATION_V2_V5.md); the changed generator and test seeds make the before/after comparison non-causal.
+
 **Synthetic-only local fraud monitoring lab.** FastAPI serves an HTML/CSS/JavaScript dashboard in English, O‘zbek and Русский. No bank data, live payment API, automatic blocking or production-readiness claim. [O‘zbek qo‘llanma](docs/README_UZ.md) · [Русское руководство](docs/README_RU.md).
 
 ## Linux download and launch
@@ -14,6 +18,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -c constraints-verified.txt -r requirements-dev.txt
 .venv/bin/python -m scripts.generate_data --rows 12000 --seed 42
 .venv/bin/python -m fraud_detector.model
+.venv/bin/python -m scripts.v6_evaluation --seeds 10 --rows 12000
 .venv/bin/uvicorn fraud_detector.api:app --host 127.0.0.1 --port 8000
 ```
 
@@ -27,34 +32,36 @@ Dockerfile is included for a **local lab only**. If Docker is installed: `docker
 
 | Capability | Status | Scope / boundary |
 |---|---|---|
-| Scenario event generator and past-only rolling windows | TESTED | Four fraud-like, two legitimate edge scenarios; noisy artificial labels |
-| Temporal fit/calibration/validation + fresh seeded test | TESTED | Test never used to select default model or threshold |
-| Logistic scoring, Platt sigmoid, model-based linear reasons | TESTED | Linear non-causal explanation; calibration worsened test Brier |
-| Always-normal/rule/ML baselines at alert budgets | TESTED | Deployable validation cutoffs plus retrospective same-volume view |
+| Scenario event generator and past-only rolling windows | TESTED | All seven scenarios now span fit/calibration/validation/test; new-account age is event-relative |
+| Temporal fit/calibration/validation + fresh seeded test | TESTED | 60/20/20 development; new test seeds 400045–400054 |
+| Logistic scoring, conditional Platt, model-based linear reasons | TESTED | Per-seed calibration decision and forced-off comparison; non-causal |
+| Always-normal/rule/depth-3 tree/ML baselines | TESTED | Exact 0.5/1/5/10% top-k across 10 seeds; paired ML-rule CI |
 | PR/ROC/reliability curves, threshold preview, PSI and slice metrics | TESTED | Synthetic diagnostics only; not production monitoring |
 | FastAPI + EN/UZ/RU HTML/JS dashboard | TESTED | Local loopback; **not Streamlit** |
-| Strict CSV batch scoring, SQLite analyst status/notes/audit | TESTED | Synthetic inputs; local audit is not tamper-evident |
-| JSON/HTML/PDF report and report-list CSV export | TESTED | Local files/responses; no private data should be entered |
-| Model/validation artifact SHA256 integrity checks | TESTED | Integrity only, not authenticity/signature |
+| Strict CSV batch scoring, SQLite analyst status/notes/audit | TESTED | All report reads/exports/writes require local key; writes also require CSRF |
+| JSON/HTML/PDF report and report-list CSV export | TESTED | Keyed local responses; no private data should be entered |
+| Model/validation artifact SHA256 + local HMAC | TESTED | Key outside `data/`, owner-only; not bank-grade, joblib still unsafe if untrusted |
 | Linux venv install, pytest, Ruff and live API/browser checks | TESTED | Exact results in [report](IMPLEMENTATION_REPORT_UZ.md) |
-| Dockerfile and Makefile | IMPLEMENTED | Docker runtime not verified unless report says otherwise |
-| GitHub Actions workflow | TESTED | Public GitHub `main` push run passed; final run link in [report](IMPLEMENTATION_REPORT_UZ.md) |
+| Dockerfile and Makefile | PARTIAL | `docker build` attempted: command not found (exit 127); build/run unverified |
+| v6 GitHub Actions workflow | IMPLEMENTED | Full tests/Ruff/audit, reduced 3-seed smoke and Docker job added; **not yet run on GitHub** |
 | pip-audit dependency scan | TESTED | Installed local environment: no known advisories after pip upgrade; time-bound finding |
+| Public ULB loader, model comparison, SHAP and feedback demo | PARTIAL | Synthetic ULB-schema fixture tested; real ULB CSV not obtained/run |
+| Ten-seed synthetic audit and unseen-typology test | TESTED | New seed-level intervals; held-out card testing recall .0127 |
 | Real bank integration, customer data, live payments | NOT IMPLEMENTED | Deliberately excluded |
 | Automatic card/transaction blocking | NOT IMPLEMENTED | Human review suggestion only |
 | Production authentication/RBAC, signed artifacts, tamper-evident audit | NOT IMPLEMENTED | Required before any external deployment |
 | Streamlit pages, vulnerability scanning | NOT IMPLEMENTED | FastAPI-served HTML dashboard; fraud monitoring is different |
 
-## Executed model result
+For v6, read `data/local-api-keys.json` **only on your own machine** and paste the analyst key into the dashboard's password-style input **before reading, creating or exporting reports**; admin key is required to confirm fraud. Never commit or share either key. The HMAC key is separate at `~/.local/share/sentinelai/artifact-signing.key` or `SENTINELAI_HMAC_KEY_FILE`, not inside `data/`. [Local integration instructions](docs/LOCAL_INTEGRATION.md). Public benchmark data are not used by this app.
 
-The new scenario/event-stream generator creates 12,000 development rows (65% fit, 10% calibration, 25% validation) and a **new, later, seeded 3,000-row synthetic test**. At the validation-selected threshold .08581994158148241, test prevalence is 176/3000 (5.8667%), precision .707627, recall .948864, F1 .810680, PR-AUC .893556 and ROC AUC .977438; TN2755 FP69 FN9 TP167. These are simulator results, not bank effectiveness. The v3 result under a different generator was precision .1009, recall .3548, PR-AUC .1134; this before/after comparison is **not** a controlled algorithm-only gain. Calibration increased Brier error from .012016 to .012800; card-present recall was 0/4. Full baselines and caveats: [MODEL_EVALUATION](docs/MODEL_EVALUATION.md).
+## Label formula and historical archive
 
-The v4 artificial label formula is scenario-dependent `1{U < p_s}`, **not** the retired v3 sigmoid equation. Learn the parameters and examples in [English](docs/SYNTHETIC_FRAUD_LABEL_FORMULA_EN.md), [O‘zbek](docs/SYNTHETIC_FRAUD_LABEL_FORMULA_UZ.md), [Русский](docs/SYNTHETIC_FRAUD_LABEL_FORMULA_RU.md), and the [scenario table](docs/SYNTHETIC_SCENARIOS.md). These labels cannot prove individual wrongdoing.
+The artificial label is scenario-dependent `1{U < p_s}`. See [English](docs/SYNTHETIC_FRAUD_LABEL_FORMULA_EN.md), [O‘zbek](docs/SYNTHETIC_FRAUD_LABEL_FORMULA_UZ.md), [Русский](docs/SYNTHETIC_FRAUD_LABEL_FORMULA_RU.md), and the [scenario table](docs/SYNTHETIC_SCENARIOS.md). It cannot prove individual wrongdoing. Superseded v2–v5 tables are preserved in the [archive](docs/archive/MODEL_EVALUATION_V2_V5.md), not current claims.
 
 ## Demo and API
 
 For download, Linux setup and a copyable scoring request, use the [local integration guide](docs/LOCAL_INTEGRATION.md).
 
-Follow the [reproducible walkthrough](docs/DEMO_WALKTHROUGH.md) to generate synthetic data, train, launch, score, investigate and export. API documentation: `http://127.0.0.1:8000/docs`; main routes: `GET /api/health`, `/api/metrics`, `/api/overview`, `/api/transactions`, `/api/reports`, `/api/reports/{id}`, `/api/reports/{id}/audit`, exports (`.csv`, `.html`, `.pdf`, JSON); `POST /api/score`, `/api/score/batch`, `/api/threshold/preview`, `/api/reports`; `PATCH /api/reports/{id}`. Writes require local CSRF token from `/api/config` and local Host/Origin. The CSV batch endpoint accepts exact feature headers, ≤1000 rows and ≤1 MB. Do not submit real data.
+Follow the [reproducible walkthrough](docs/DEMO_WALKTHROUGH.md) to generate synthetic data, train, launch, score, investigate and export. API documentation: `http://127.0.0.1:8000/docs`; main routes: `GET /api/health`, `/api/metrics`, `/api/overview`, `/api/transactions`, `/api/reports`, `/api/reports/{id}`, `/api/reports/{id}/audit`, exports (`.csv`, `.html`, `.pdf`, JSON); `POST /api/score`, `/api/score/batch`, `/api/threshold/preview`, `/api/reports`; `PATCH /api/reports/{id}`. **All `/api/reports*` read/export/write routes require analyst/admin `X-API-Key`; writes also require CSRF** from `/api/config`. Host/Origin is restricted to loopback. The CSV batch endpoint accepts exact feature headers, ≤1000 rows and ≤1 MB. Do not submit real data.
 
 Real browser captures: [screenshots](screenshots/README.md). Detailed audit: [capabilities](docs/FRAUD_DETECTION_CAPABILITIES.md), [evaluation](docs/MODEL_EVALUATION.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md), [integration roadmap](docs/BANKING_INTEGRATION_ROADMAP.md), [Uzbek implementation report](IMPLEMENTATION_REPORT_UZ.md). [Release notes](release/RELEASE_NOTES.md), [LinkedIn draft](release/LINKEDIN_POST_EN.md) and [Telegram draft](release/TELEGRAM_ZERODAYUZ_UZ.md) are included; social posts have not been published. MIT license; educational/portfolio use.

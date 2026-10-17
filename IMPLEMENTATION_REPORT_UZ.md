@@ -1,5 +1,7 @@
 # SentinelAI — yakuniy to‘liq ish hisoboti (v4)
 
+> 2026-10-18 yangilanishi: ushbu matnning v4/v5 raqamlari tarixiy. Joriy v6-local baholash [MODEL_EVALUATION](docs/MODEL_EVALUATION.md)da. **Modelni qanday ma’lumotga o‘qitish bo‘yicha manbali, ustuvor va bosqichli tavsiyalar** hamda bajarilgan 1-bosqich auditi [AI_TRAINING_ROADMAP_UZ](docs/AI_TRAINING_ROADMAP_UZ.md)da. Avvalgi “master prompt topilmadi” gapi tarixiy: fayl endi loyiha papkasida mavjud va [gap analysis](docs/MASTER_PROMPT_GAP_ANALYSIS.md) yozilgan.
+
 Sana: 2026-10-15. Holat: ishlaydigan, faqat sintetik ma’lumotli FastAPI + HTML/JavaScript portfolio ilovasi. Haqiqiy bank, mijoz, credential, to‘lov API yoki karta bloklash ishlatilmagan. Master prompt fayli workspace/Desktop qidiruvida topilmadi; shu sabab uning 100% bajarilgani da’vo qilinmaydi. Kod ochiq [GitHub repository](https://github.com/shomatoff/ai-bank-fraud-detector) `main` branchiga yuborilgan. [GitHub Actions CI](https://github.com/shomatoff/ai-bank-fraud-detector/actions) tekshirilgan; [v2.0.0 release](https://github.com/shomatoff/ai-bank-fraud-detector/releases/tag/v2.0.0) source ZIP/tarball orqali yuklab olinadi. LinkedIn/Telegram matnlari draft, post qilinmagan.
 
 ## Nimalar qo‘shildi va yangilandi
@@ -75,3 +77,72 @@ python3 -m venv .venv
 Brauzerda server ishlayotgan paytda `http://127.0.0.1:8000/` ni oching; port band bo‘lsa 8001 ni ikkala joyda ham almashtiring. Docker local lab komandasi README’da. To‘liq capability/formula/roadmap: [audit](docs/FRAUD_DETECTION_CAPABILITIES.md), [formula UZ](docs/SYNTHETIC_FRAUD_LABEL_FORMULA_UZ.md), [roadmap](docs/BANKING_INTEGRATION_ROADMAP.md), [demo](docs/DEMO_WALKTHROUGH.md).
 
 GitHub’dan mustaqil yuklash uchun yuqoridagi `cd` qatoridan oldin `git clone https://github.com/shomatoff/ai-bank-fraud-detector.git` va `cd ai-bank-fraud-detector` ishlating; ya’ni mashinangizda loyiha mavjud bo‘lmasa `/home/chainjas/...` yo‘li sizda bo‘lmaydi. `git clone` o‘rniga GitHub release source ZIP ham ishlaydi. Lokal integratsiya HTTP API misollari [LOCAL_INTEGRATION](docs/LOCAL_INTEGRATION.md)da.
+
+## Qo'shimcha hisobot v5
+
+Sana: 2026-10-15–16. **Bu bo‘lim avvalgi v2.0.0 hisobotiga faqat ilova qilingan; yuqoridagi matn tarixiy holat sifatida o‘zgartirilmagan.** V5 kod va hujjatlar hozir faqat lokal workspace’da. Foydalanuvchining ushbu topshirig‘iga binoan GitHub’ga push, release yoki ijtimoiy tarmoqqa post qilinmadi; GitHub’dagi `v2.0.0` hali eski chiqarilgan versiya.
+
+### Bosqich A — rigor va lokal xavfsizlik
+
+- `fraud_detector/evaluation.py`: exact top-k 0.5%, 1%, 5%, 10% endi qoida/ML solishtirishining asosiy usuli; nominal validation cutoff natijalarida haqiqiy test alert foizi alohida. Always-normal 0 alert bo‘lib qoladi, budgetni sun’iy to‘ldirmaydi. Retrospektiv top-k to‘liq batch scoringni talab qiladi va jonli threshold emas.
+- `fraud_detector/event_stream.py`: qonuniy `legit_many_declines` (2.5%, epizod 5, rad etish .85, yorliq .02) qo‘shildi; to‘rtta fraud ssenariyining ijobiy yorliq ehtimoli `.94→.88`, normal `.005→.01`. Haqiqiy bank statistikasi emas. Card-present hajmi metrikani bezash uchun sun’iy oshirilmadi; 30 tadan kam ijobiy satrda recall “not evaluable” bo‘ladi.
+- `fraud_detector/training_v2.py`: 60/20/20 vaqt split, yangi test seed **300045**, 10 seed to‘liq qayta o‘qitish; Platt faqat validation Brier va 10-bin ECE **ikkalasi** yaxshilansa qo‘llanadi. Raw Brier `.017899`, Platt `.018520`; raw ECE `.014630`, Platt `.018282` — shuning uchun v5 Platt o‘chirilgan. Model izohi tanlangan model log-oddsiga aniq chiziqli hissa, sababiy emas.
+- `fraud_detector/api_v2.py`: hisobot yaratish/yangilashga lokal analyst/admin `X-API-Key` **va** CSRF kerak; `confirmed_fraud` faqat admin. Kalitlar `data/local-api-keys.json`da 0600 ruxsat bilan yaratiladi yoki ikki alohida environment kaliti ishlatiladi. Model va validation SHA256 juftligi lokal 0600 kalit bilan HMAC qilinib `joblib.load`dan oldin tekshiriladi. Kalit artefakt yonida saqlanadi, read/export autentifikatsiyasiz: bu bank-grade himoya emas. Hech qanday avtomatik bloklash qo‘shilmadi.
+- Docker: `docker build -t sentinelai-v5-local .` haqiqatan sinab ko‘rildi, `/bin/bash: docker: command not found` (exit 127). Shuning uchun Docker build/run va konteyner `/api/health` **bajarilmadi**; oddiy venv live `/api/health` 200 qaytdi.
+
+### Bosqich B — public benchmark chegarasi
+
+`fraud_detector/public_benchmark.py` ULB sxemasidagi `Time,V1..V28,Amount,Class` CSV’ni faqat foydalanuvchi bergan SHA256 mos bo‘lsa ochadi, `Time` bo‘yicha 60/20/20 ajratadi. Logistic, histogram gradient boosting, o‘rnatilsa LightGBM/XGBoost, amount-only qoida va always-normal taqqoslanadi. Tree SHAP va logistika linear hissalari sababiy emas. Idealized analyst feedback faqat validationning oldingi yarmidagi sun’iy “tasdiqlar” bilan ko‘rsatiladi. Dataset appga ulanmagan va repoga kiritilmagan. Kalitsiz Kaggle yuklash urinishida HTTP 404 qaytdi; **haqiqiy ULB CSV olinmadi, unda model ishlatilmadi, public-data metrikasi yo‘q**. `docs/BENCHMARK.md` aniq qo‘llanma va cheklovni beradi.
+
+300 satrli **sintetik ULB-sxema fixture** (test 60, ijobiy 7) smoke natijasi: validation HGB’ni tanladi; test PR-AUC logistic `.134998`, HGB `.152906`, LightGBM `.140056`, amount-only qoida `.186839`. Exact-5% uch alertda HGB precision `.333333`, recall `.142857`; logistic/LightGBM/rule precision va recall 0. Idealized feedback HGB test PR-AUC’ni `.152906→.124331` va TP’ni `1→0` yomonlashtirdi. Bular haqiqiy ULB natijalari **emas**. XGBoost install 305 MB CUDA dependency so‘radi va bekor qilindi; LightGBM 4.7.0/SHAP .53 o‘rnatildi. SHAP’ning LightGBM chiqish-shakli haqida 1 upstream warning qoldi, natija normallashtirildi.
+
+### Oldin/keyin — faqat o‘lchangan sintetik testlar
+
+| Ko‘rsatkich | v2.0.0/v4, eski generator va seed 200045 | v5-local, o‘zgargan generator va **yangi** seed 300045 |
+|---|---:|---:|
+| Test qatorlari / fraud yorliqlari | 3000 / 176 | 3000 / 189 |
+| Fit / calibration / validation | 7800 / 1200 / 3000 | 7200 / 2400 / 2400 |
+| Default cutoff alerts | 236 (7.8667%) | 254 (8.4667%) |
+| TP / FP / FN / TN | 167 / 69 / 9 / 2755 | 164 / 90 / 25 / 2721 |
+| Precision | .707627 | .645669 |
+| Recall | .948864 | .867725 |
+| F1 | .810680 | .740406 |
+| PR-AUC | .893556 | .796689 |
+| ROC AUC | .977438 | .934317 |
+| Test Brier (tanlangan model) | .012800, Platt | .021669, raw logistic |
+
+Bu jadval **nazoratli algoritm A/B sinovi emas**: generator, yorliq shovqini, split va test seed birga o‘zgargan. V5 exact-5% *teng hajm* testida rule TP91/FP59/FN98/TN2752, precision `.606667`, recall `.481481`; ML TP130/FP20/FN59/TN2791, precision `.866667`, recall `.687831` — ikkisida ham aynan 150/3000 (5%) alert. Nominal 5% cutoff esa ML’da 252/3000 (8.4%) alert; endi bu farq yashirilmaydi. 10 mustaqil seed (42–51, yangi test seedlari 300045–300054), exact-5% mean va 95% seed-level bootstrap: precision `.813333` [.800667,.828667], recall `.661446` [.648752,.674807], PR-AUC `.731488` [.715733,.750300]. Bu interval faqat simulyator o‘zgaruvchanligi uchun. Held-out `card_testing`: **TP0/FN41**; card-present default TP0/FN14, recall 30 tadan kam positive sabab “not evaluable”. To‘liq jadval: `docs/MODEL_EVALUATION.md`.
+
+### Bajarilgan tekshiruvlar, xatolar va qolgan ish
+
+`.venv/bin/python -m pytest -q`: **21 passed, 1 warning** (LightGBM SHAP output-shape). `.venv/bin/ruff check fraud_detector tests scripts`: **All checks passed**. `.venv/bin/pip-audit`: **No known vulnerabilities found** (faqat joriy vaqt). `node --check` ikkala JS faylda o‘tdi. Live `scripts/live_smoke.py --base http://127.0.0.1:8003`: `/`, `/docs`, health, metrics, overview, transactions, score, reports va eksport 200; noto‘g‘ri CSV 422; kalitsiz write 401; analyst create 201; analyst `confirmed_fraud` 403; admin confirmation 200. Chrome/CDP uch til va analyst auditini tekshirib **9 ta haqiqiy screenshot**ni `screenshots/`ga oldi. Docker sinovi yuqorida keltirilgan 127 xato bilan tugadi.
+
+Rivojlanishda uchragan aniq xatolar: yangi API-key sabab eski `test_report_migration_details_and_json_export` 401 olib, dastlab `1 failed / 15 passed` bo‘ldi — test yangi auth siyosatiga moslandi; Ruff import tartibi va keng exception tutishni ko‘rsatdi — tartiblandi; birinchi v5 hisob eski 200045 test seed’ni qayta ishlatgani sezildi — 300045 ga ko‘chirilib 10 seed bilan qayta hisoblandi; Platt validationni yomonlashtirdi — shartli o‘chirildi; Kaggle URL 404; Docker yo‘q; XGBoost CUDA download bekor qilindi. Sabab/joy/dalil/tuzatish to‘liq ikki tildagi hujjatli hikoyada: `docs/PROJECT_DOCUMENTARY_UZ.md`, `docs/PROJECT_DOCUMENTARY_EN.md`.
+
+**NOT IMPLEMENTED / NOT RUN:** haqiqiy ULB benchmark, XGBoost natijasi, Docker runtime, production key management/RBAC, report read-auth, imzolangan tashqi trust root, real analyst feedback, bank/shadow integration, fairness audit, pentest, avtomatik bloklash. Master prompt `AI_BANK_FRAUD_DETECTOR_CODEX_MASTER_PROMPT.md` project papkasida topilmadi; requirement-by-requirement gap analysis qilib bo‘lmaydi. V5 GitHub’da **yo‘q**, release/post **qilinmadi**.
+
+### V5 lokal ishga tushirish
+
+```bash
+cd /home/chainjas/codex-test/ai-bank-fraud-detector
+python3 -m venv .venv
+.venv/bin/python -m pip install -c constraints-verified.txt --upgrade pip
+.venv/bin/python -m pip install -c constraints-verified.txt -r requirements-dev.txt
+.venv/bin/python -m fraud_detector.model
+.venv/bin/python -m pytest -q
+.venv/bin/ruff check fraud_detector tests scripts
+.venv/bin/pip-audit
+.venv/bin/uvicorn fraud_detector.api:app --host 127.0.0.1 --port 8000
+```
+
+Brauzerda **server ishlayotgan paytda** `http://127.0.0.1:8000/` ochiladi. Hisobot yozishdan oldin o‘z kompyuteringizdagi `data/local-api-keys.json`dan analyst kalitini UI’dagi password maydoniga kiriting; admin tasdiqlash uchun admin kaliti kerak. Kalitni hech kimga yubormang. Alohida terminalda `.venv/bin/python -m scripts.live_smoke --base http://127.0.0.1:8000` orqali live API’ni tekshirish mumkin. Public benchmark qo‘shimcha deps va qat’iy checksum qadamlari `docs/BENCHMARK.md`da. Docker buyruqlari faqat Docker mavjud muhitda sinab ko‘rilishi mumkin.
+
+## 2026-10-18 qo‘shimcha hisobot — AI yaxshilash tajribasi va xavfsiz qaror
+
+Eski v4/v5 tarixiy matn o‘zgartirilmadi; bu bo‘lim joriy holatni qo‘shadi. To‘liq protokol, raqamlar, xatolar va qolgan bosqichlar [AI_CHALLENGER_EVALUATION_UZ](docs/AI_CHALLENGER_EVALUATION_UZ.md) hamda [AI_TRAINING_ROADMAP_UZ](docs/AI_TRAINING_ROADMAP_UZ.md)da.
+
+- Mavjud 10 belgi asosida 4 ta past/joriy voqeagagina tayanadigan interaction yaratildi; yorliq, ssenariy va customer ID kiritilmadi. Nomzod alohida qoldi, faol v6 modelga qo‘shilmadi.
+- Mustaqil 10-seed tasdiqda validation-selected yangi siyosat exact-5% precision 0,8360 → 0,8653, recall 0,6703 → 0,6938, PR-AUC 0,7566 → 0,7680 ko‘rsatdi. Lekin boshqa, 342-seed held-out typology gate uch turda recall regressiyasini aniqladi: account takeover 0,4887 → 0; mule/cash-out 0,9165 → 0,1671; new-account transfer 0,55 → 0. Card testing ikkala modelda ham 0. **Promotion rad etildi**, `promote=false`; ijobiy umumiy metrika bu xavfni yashirmaydi.
+- Oldin ko‘rilgan 42–51 test seedlariga v7 sinov ham o‘tkazildi, ammo bu mustaqil final tasdiq emas. Birinchi holdout tekshiruvining model-selection qoidasi deployment qoidasi bilan mos emasligi aniqlandi va tuzatilgan mos diagnostikada ham regressiya saqlandi. Dastlab v6 zaxira deb nomlangan fayl test importidagi avtomatik trening sabab aslida v7 preflight ekani aniqlanib qayta nomlandi; asl v6 backup deb ko‘rsatilmaydi.
+- Rasmiy ULB CSV download 404 qaytardi, hisob ma’lumoti/CSV yo‘q; real benchmark bajarilmadi. Uchinchi tomon nusxasidan foydalanilmadi. Keyingi bosqich: asl fayl/checksum va foydalanish shartlari, keyin alohida benchmark va yangi mustaqil final test; real bank/shadow validation hali yo‘q.
+- GitHub’dagi `shomatoff/ai-bank-fraud-detector` repo `PRIVATE`ga o‘tkazildi va GitHub `isPrivate=true` deb tasdiqladi. Bu oldingi public nusxalarni o‘chirib yubormaydi. `data/`dagi model, natija, API-key va SQLite Git’ga qo‘shilmaydi. Joriy pytest **29 passed, 1 SHAP warning**; Ruff **clean**. Git push/CI natijasi quyida alohida qayd etiladi.

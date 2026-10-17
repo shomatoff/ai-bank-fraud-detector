@@ -14,14 +14,15 @@ import pandas as pd
 from .features import CATEGORIES, CHANNELS, FEATURES
 
 SCENARIOS = {
-    "account_takeover": {"share": 0.015, "episode": 4, "positive_rate": 0.94},
-    "card_testing": {"share": 0.015, "episode": 6, "positive_rate": 0.94},
-    "mule_cashout": {"share": 0.015, "episode": 3, "positive_rate": 0.94},
-    "new_account_transfer": {"share": 0.015, "episode": 2, "positive_rate": 0.94},
+    "account_takeover": {"share": 0.015, "episode": 4, "positive_rate": 0.88},
+    "card_testing": {"share": 0.015, "episode": 6, "positive_rate": 0.88},
+    "mule_cashout": {"share": 0.015, "episode": 3, "positive_rate": 0.88},
+    "new_account_transfer": {"share": 0.015, "episode": 2, "positive_rate": 0.88},
     "legit_travel": {"share": 0.025, "episode": 2, "positive_rate": 0.01},
     "legit_large_purchase": {"share": 0.025, "episode": 1, "positive_rate": 0.01},
+    "legit_many_declines": {"share": 0.025, "episode": 5, "positive_rate": 0.02},
 }
-NORMAL_POSITIVE_RATE = 0.005
+NORMAL_POSITIVE_RATE = 0.01
 WINDOW_SECONDS = 30 * 24 * 3600
 
 
@@ -37,35 +38,40 @@ def generate_event_stream(
     if count < 100:
         raise ValueError("At least 100 rows are required")
     rng = np.random.default_rng(seed)
-    customer_count = max(40, count // 20)
+    new_episodes = int(np.ceil(max(2, round(count * SCENARIOS["new_account_transfer"]["share"])) / 2))
+    customer_count = max(40 + new_episodes, count // 20)
     ages = rng.integers(120, 2200, customer_count)
-    new_customer_count = max(8, customer_count // 8)
-    ages[:new_customer_count] = rng.integers(1, 21, new_customer_count)
-    old_customers = np.arange(new_customer_count, customer_count)
-    new_customers = np.arange(new_customer_count)
+    old_customers = np.arange(new_episodes, customer_count)
+    opened_at = np.full(customer_count, -1, dtype=int)
 
     plans: list[tuple[int, int, str]] = []
     for scenario, config in SCENARIOS.items():
         target = max(config["episode"], round(count * config["share"]))
-        for offset in range(0, target, config["episode"]):
+        episode_count = int(np.ceil(target / config["episode"]))
+        for episode_index, offset in enumerate(range(0, target, config["episode"])):
+            # Stratification plus within-stratum jitter spreads each type through
+            # the entire month without using labels or later events as features.
+            anchor = int((episode_index + rng.random()) / episode_count * (WINDOW_SECONDS - 3600))
             if scenario == "new_account_transfer":
-                customer = int(rng.choice(new_customers))
-                anchor = int(rng.integers(0, 14 * 86400))
-            elif scenario in {"account_takeover", "mule_cashout"}:
-                customer = int(rng.choice(old_customers))
-                anchor = int(rng.integers(0, WINDOW_SECONDS - 3600))
+                customer = episode_index
+                # The account opens shortly before its own event, including in
+                # late calibration/validation windows, not at simulation start.
+                opened_at[customer] = anchor - int(rng.integers(1, 15) * 86400)
             else:
-                customer = int(rng.integers(0, customer_count))
-                anchor = int(rng.integers(0, WINDOW_SECONDS - 3600))
+                customer = int(rng.choice(old_customers))
             for step in range(min(config["episode"], target - offset)):
                 # Explicit preceding activity makes card testing and cash-out bursts.
                 plans.append((anchor + step * int(rng.integers(60, 240)), customer, scenario))
     if len(plans) > count:
         plans = plans[:count]
     for _ in range(count - len(plans)):
+        seconds = int(rng.integers(0, WINDOW_SECONDS))
+        customer = int(rng.integers(0, customer_count))
+        if opened_at[customer] > seconds:
+            customer = int(rng.choice(old_customers))
         plans.append((
-            int(rng.integers(0, WINDOW_SECONDS)),
-            int(rng.integers(0, customer_count)),
+            seconds,
+            customer,
             "normal",
         ))
     plans.sort(key=lambda item: item[0])
@@ -83,7 +89,8 @@ def generate_event_stream(
             prior_bad.popleft()
         velocity = min(len(recent), 100)
         prior_declines = min(len(prior_bad), 100)
-        age = int(min(36500, ages[customer] + seconds // 86400))
+        age = int(min(36500, max(1, (seconds - opened_at[customer]) // 86400)
+                      if opened_at[customer] != -1 else ages[customer] + seconds // 86400))
         category = str(rng.choice(CATEGORIES, p=[.32, .13, .10, .16, .20, .09]))
         channel = str(rng.choice(CHANNELS, p=[.54, .36, .10]))
         amount = float(np.clip(rng.lognormal(4.4, 1.08), .01, 100000))
@@ -119,6 +126,12 @@ def generate_event_stream(
             category = "electronics"
             channel = str(rng.choice(["online", "card_present"]))
             amount = float(rng.uniform(1800, 6500))
+        elif scenario == "legit_many_declines":
+            category, channel = "electronics", "online"
+            amount = float(rng.uniform(100, 1800))
+            new_device = bool(rng.random() < .50)
+            country_risk = int(rng.choice([0, 1, 2], p=[.2, .6, .2]))
+            decline_probability = 0.85
         declined = bool(rng.random() < decline_probability)
         positive_rate = SCENARIOS[scenario]["positive_rate"] if scenario in SCENARIOS else NORMAL_POSITIVE_RATE
         row = {
