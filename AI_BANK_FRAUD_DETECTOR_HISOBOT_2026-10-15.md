@@ -158,3 +158,7 @@ Rasmiy Kaggle ULB v3 `creditcard.csv` `kagglehub` orqali olinib, SHA256 `76274b6
 ### 2026-10-18 yangi mijoz/vaqt diagnostikasi — keyingi qo‘shimcha
 
 Faol modelni almashtirmasdan `scripts/audit_generalization.py` orqali 842-seed, 30 000 sintetik voqeadagi 20% mijoz fit/validation'dan chiqarilib keyingi vaqt oynasida baholandi. Validation tanlagan oddiy logistic yangi mijoz kohortining 1 188 qator/55 fraudida PR-AUC `.739150`, TP47/FP25/FN8/TN1108; ko‘rilgan mijozning 4 747 qator/280 fraudida `.724427`, TP222/FP99/FN58/TN4368. Mijoz-holat 5% sig‘imli retrospektiv navbati ham o‘lchandi. Qarshi dalil: 124 qonuniy `legit_many_declines`ning 18 tasi ko‘rilgan kohortda noto‘g‘ri alert; yangi kohortda ayrim segmentlar 30 tadan kam. Dastlab “ko‘rilgan” testga 65 ilgari ko‘rilmagan qator ham tushgani aniqlanib kohort tuzatildi va natija qayta chiqarildi. Bu bir seed/o‘sha generatorga oid diagnostika, bank yoki yangi fraud naqshi isboti emas. Eski ULB reja matni o‘chirilmay, oxirida holat tuzatildi. [Protokol va hali bajarilmagan darvozalar](docs/GENERALIZATION_AND_READINESS_UZ.md), [asosiy hisobot](IMPLEMENTATION_REPORT_UZ.md). Lokal 39 test va Ruff o‘tdi; yangi push/CI natijasi keyin qo‘shiladi.
+
+### Customer-disjoint CI qo‘shimchasi
+
+`4357fce` private `main`ga push qilindi; [Actions run 39067893435](https://github.com/shomatoff/ai-bank-fraud-detector/actions/runs/39067893435) `verify` va Docker build/start/health bilan **success**. Natija fayli va maxfiy/real ma'lumotlar Git'ga qo‘shilmadi. Bu CI yozuvi hujjat-only keyingi pushga kiradi.
